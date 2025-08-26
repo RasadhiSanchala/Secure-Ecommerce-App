@@ -21,3 +21,5 @@ app.get('/', (req,res)=>{
 
 
 app.use('/users', require('./routes/userRoutes'));
+app.use('/products', require('./routes/productRoutes'));
+app.use('/orders', require('./routes/orderRoutes'))
