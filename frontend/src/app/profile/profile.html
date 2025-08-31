@@ -1,0 +1,147 @@
+<div class="profile-container">
+  <div class="container">
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <div class="avatar-circle">
+          {{ getInitials() }}
+        </div>
+      </div>
+      <div class="profile-info">
+        <h1>{{ user()?.name || 'User' }}</h1>
+        <p class="user-email">{{ user()?.email }}</p>
+        <div class="user-badges">
+          <span class="badge admin" *ngIf="user()?.isAdmin">Admin</span>
+          <span class="badge verified" *ngIf="user()?.emailVerified">Verified</span>
+          <span class="badge unverified" *ngIf="!user()?.emailVerified">Unverified</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <!-- Profile Settings -->
+      <div class="profile-card">
+        <h2>Profile Information</h2>
+        <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="profile-form">
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input
+              type="text"
+              id="name"
+              formControlName="name"
+              [class.error]="profileForm.get('name')?.invalid && profileForm.get('name')?.touched"
+            >
+            <div class="error-message" *ngIf="profileForm.get('name')?.invalid && profileForm.get('name')?.touched">
+              <span *ngIf="profileForm.get('name')?.errors?.['required']">Name is required</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              [class.error]="profileForm.get('email')?.invalid && profileForm.get('email')?.touched"
+            >
+            <div class="error-message" *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+              <span *ngIf="profileForm.get('email')?.errors?.['required']">Email is required</span>
+              <span *ngIf="profileForm.get('email')?.errors?.['email']">Please enter a valid email</span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="update-btn"
+              [disabled]="profileForm.invalid || isUpdatingProfile()"
+            >
+              <span *ngIf="!isUpdatingProfile()">Update Profile</span>
+              <span *ngIf="isUpdatingProfile()">Updating...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Change Password -->
+      <div class="profile-card">
+        <h2>Change Password</h2>
+        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
+          <div class="form-group">
+            <label for="currentPassword">Current Password</label>
+            <input
+              type="password"
+              id="currentPassword"
+              formControlName="currentPassword"
+              [class.error]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="newPassword">New Password</label>
+            <input
+              type="password"
+              id="newPassword"
+              formControlName="newPassword"
+              [class.error]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
+            >
+            <div class="error-message" *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+              <span *ngIf="passwordForm.get('newPassword')?.errors?.['minlength']">Password must be at least 8 characters</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmNewPassword">Confirm New Password</label>
+            <input
+              type="password"
+              id="confirmNewPassword"
+              formControlName="confirmNewPassword"
+              [class.error]="passwordForm.get('confirmNewPassword')?.invalid && passwordForm.get('confirmNewPassword')?.touched"
+            >
+            <div class="error-message" *ngIf="passwordForm.get('confirmNewPassword')?.invalid && passwordForm.get('confirmNewPassword')?.touched">
+              <span *ngIf="passwordForm.get('confirmNewPassword')?.errors?.['passwordMismatch']">Passwords do not match</span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="update-btn"
+              [disabled]="passwordForm.invalid || isChangingPassword()"
+            >
+              <span *ngIf="!isChangingPassword()">Change Password</span>
+              <span *ngIf="isChangingPassword()">Changing...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Account Actions -->
+      <div class="profile-card">
+        <h2>Account Actions</h2>
+        <div class="action-buttons">
+          <button class="action-btn refresh" (click)="refreshToken()" [disabled]="isRefreshing()">
+            <span *ngIf="!isRefreshing()">🔄 Refresh Session</span>
+            <span *ngIf="isRefreshing()">Refreshing...</span>
+          </button>
+          
+          <button class="action-btn logout" (click)="logout()">
+            🚪 Sign Out
+          </button>
+          
+          <button class="action-btn danger" (click)="confirmDeleteAccount()">
+            ⚠️ Delete Account
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="message success" *ngIf="successMessage()">
+      {{ successMessage() }}
+    </div>
+    
+    <div class="message error" *ngIf="errorMessage()">
+      {{ errorMessage() }}
+    </div>
+  </div>
+</div>
