@@ -1,0 +1,25 @@
+.home-container {
+  text-align: center;
+  margin-top: 5rem;
+  padding: 2rem;
+  background: #fff8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+h1 {
+  color: #c97d60;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: 1px;
+}
+
+p {
+  color: #555;
+  font-size: 1.15rem;
+  margin-top: 1rem;
+  line-height: 1.6;
+}
