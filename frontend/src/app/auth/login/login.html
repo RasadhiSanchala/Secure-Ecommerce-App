@@ -1,0 +1,103 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Welcome Back!</h1>
+      <p>Sign in to your BakeHouse account</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          [class.error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+          placeholder="Enter your email"
+          autocomplete="email"
+        >
+        <div class="error-message" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+          <span *ngIf="loginForm.get('email')?.errors?.['required']">Email is required</span>
+          <span *ngIf="loginForm.get('email')?.errors?.['email']">Please enter a valid email address</span>
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-input">
+          <input
+            [type]="showPassword() ? 'text' : 'password'"
+            id="password"
+            formControlName="password"
+            [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          >
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="togglePassword()"
+            tabindex="-1"
+          >
+            {{ showPassword() ? '👁️' : '🔒' }}
+          </button>
+        </div>
+        <div class="error-message" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+          <span *ngIf="loginForm.get('password')?.errors?.['required']">Password is required</span>
+          <span *ngIf="loginForm.get('password')?.errors?.['minlength']">Password must be at least 6 characters</span>
+        </div>
+      </div>
+
+      <!-- Remember Me -->
+      <div class="form-options">
+        <label class="checkbox-container">
+          <input type="checkbox" formControlName="rememberMe">
+          <span class="checkmark"></span>
+          Remember me
+        </label>
+        <a href="#" class="forgot-password" (click)="onForgotPassword($event)">Forgot password?</a>
+      </div>
+
+      <!-- Error Message -->
+      <div class="form-error" *ngIf="errorMessage()">
+        <span>{{ errorMessage() }}</span>
+      </div>
+
+      <!-- Success Message -->
+      <div class="form-success" *ngIf="successMessage()">
+        <span>{{ successMessage() }}</span>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="login-btn"
+        [disabled]="loginForm.invalid || isLoading()"
+      >
+        <span *ngIf="!isLoading()">Sign In</span>
+        <span *ngIf="isLoading()" class="loading-spinner">
+          <span class="spinner"></span>
+          Signing In...
+        </span>
+      </button>
+    </form>
+
+    <!-- Divider -->
+    <div class="divider">
+      <span>or</span>
+    </div>
+
+    <!-- Auth0 Login -->
+    <button class="auth0-btn" (click)="loginWithAuth0()">
+      <span class="auth0-icon">🔐</span>
+      Continue with Auth0
+    </button>
+
+    <!-- Sign Up Link -->
+    <div class="signup-link">
+      <p>Don't have an account? <a routerLink="/register">Create one here</a></p>
+    </div>
+  </div>
+</div>
