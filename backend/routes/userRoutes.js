@@ -1,23 +1,17 @@
+// backend/routes/userRoutes.js - Updated with authentication
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
 
-// Get all users
-router.get('/', userController.getUsers);
+// Public routes
+router.post('/login', userController.loginUser); // Moved to /auth/login
+router.post('/register', userController.createUser); // Moved to /auth/register
 
-// Login
-router.post('/login', userController.loginUser);
-
-// Get one user
-router.get('/:id', userController.getUserById);
-
-// Create user
-router.post('/', userController.createUser);
-
-// Update user
-router.put('/:id', userController.updateUser);
-
-// Delete user
-router.delete('/:id', userController.deleteUser);
+// Protected routes - require authentication
+router.get('/', authenticateToken, requireAdmin, userController.getUsers); // Only admins can see all users
+router.get('/:id', authenticateToken, userController.getUserById); // Users can see their own profile + admins can see any
+router.put('/:id', authenticateToken, userController.updateUser); // Users can update their own profile
+router.delete('/:id', authenticateToken, requireAdmin, userController.deleteUser); // Only admins can delete
 
 module.exports = router;

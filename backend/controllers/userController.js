@@ -1,5 +1,7 @@
+// backend/controllers/userController.js
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
+const { generateToken } = require('../utils/jwt');
 const saltRounds = 10;
 
 // Get all users
@@ -23,18 +25,49 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Create new user
+// Create new user (Register)
 exports.createUser = async (req, res) => {
   const { name, email, password, isAdmin } = req.body;
   try {
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'Email already in use' });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
-    const newUser = new User({ name: name, email: email, password: hashedPassword, isAdmin:isAdmin });
+    const newUser = new User({ 
+      name, 
+      email, 
+      password: hashedPassword, 
+      isAdmin: isAdmin || false,
+      emailVerified: false
+    });
+    
     await newUser.save();
-    res.status(201).json({ _id: newUser._id, name: newUser.name, email: newUser.email, isAdmin: newUser.isAdmin });
+
+    // Generate JWT token for immediate login after registration
+    const token = generateToken({
+      id: newUser._id,
+      email: newUser.email,
+      isAdmin: newUser.isAdmin
+    });
+
+    res.status(201).json({ 
+      message: 'User created successfully',
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        isAdmin: newUser.isAdmin
+      }
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -45,7 +78,11 @@ exports.updateUser = async (req, res) => {
   try {
     let updateData = { ...req.body };
 
-    // 🔒 If password is being updated, hash it
+    // Remove sensitive fields that shouldn't be updated directly
+    delete updateData.auth0Id;
+    delete updateData.createdAt;
+
+    // If password is being updated, hash it
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, saltRounds);
     }
@@ -74,29 +111,56 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// User login
+// User login with JWT
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
   try {
-    // 1. Check if user exists
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // 2. Compare plain password with hashed password
+    // For Auth0 users, prevent password login
+    if (user.auth0Id && user.password === 'auth0-user') {
+      return res.status(400).json({ 
+        message: 'Please use Auth0 login for this account',
+        useAuth0: true 
+      });
+    }
+
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // 3. Send success response (without password)
-    res.json({
-      _id: user._id,
-      name: user.name,
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = generateToken({
+      id: user._id,
       email: user.email,
-      isAdmin: user.isAdmin,
-      message: 'Login successful'
+      isAdmin: user.isAdmin
+    });
+
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        lastLogin: user.lastLogin
+      }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
