@@ -1,1 +1,61 @@
-<router-outlet></router-outlet>
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a routerLink="/home" (click)="closeMenu()">🍞 BakeHouse</a>
+    </div>
+    
+    <button class="nav-toggle" (click)="toggleMenu()" [class.active]="isMenuOpen()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    
+    <ul class="nav-menu" [class.active]="isMenuOpen()">
+      <li class="nav-item">
+        <a routerLink="/home" routerLinkActive="active" (click)="closeMenu()">Home</a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/products" routerLinkActive="active" (click)="closeMenu()">Products</a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">About Us</a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/login" routerLinkActive="active" (click)="closeMenu()">Login</a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/register" routerLinkActive="active" (click)="closeMenu()">Register</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<main class="main-content">
+  <router-outlet></router-outlet>
+</main>
+
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-section">
+      <h3>BakeHouse</h3>
+      <p>Freshly baked goods, delivered with love.</p>
+    </div>
+    <div class="footer-section">
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a routerLink="/home">Home</a></li>
+        <li><a routerLink="/products">Products</a></li>
+        <li><a routerLink="/about">About Us</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h4>Contact Info</h4>
+      <p>📞 (555) 123-BAKE</p>
+      <p>📧 hello@bakehouse.com</p>
+      <p>📍 123 Baker Street, Sweet City</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2025 BakeHouse. All rights reserved.</p>
+  </div>
+</footer>
