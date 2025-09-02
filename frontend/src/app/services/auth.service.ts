@@ -1,0 +1,279 @@
+// src/app/services/auth.service.ts
+import { Injectable, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { Observable, BehaviorSubject, catchError, of, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+  lastLogin?: Date | string;
+  emailVerified?: boolean;
+  auth0Id?: string;
+}
+
+export interface AuthResponse {
+  message: string;
+  token: string;
+  user: User;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private readonly TOKEN_KEY = 'authToken';
+  private readonly USER_KEY = 'user';
+  private isBrowser: boolean;
+
+  // Signals for reactive state management
+  private readonly _currentUser = signal<User | null>(null);
+  private readonly _isAuthenticated = signal<boolean>(false);
+  private readonly _isLoading = signal<boolean>(false);
+
+  // Public readonly signals
+  readonly currentUser = this._currentUser.asReadonly();
+  readonly isAuthenticated = this._isAuthenticated.asReadonly();
+  readonly isLoading = this._isLoading.asReadonly();
+  readonly isAdmin = computed(() => this._currentUser()?.isAdmin ?? false);
+
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    @Inject(PLATFORM_ID) platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+
+    // Only initialize auth in browser
+    if (this.isBrowser) {
+      this.initializeAuth();
+    }
+  }
+
+  private initializeAuth(): void {
+    const token = this.getToken();
+    const storedUser = this.getStoredUser();
+
+    if (token && storedUser) {
+      this._currentUser.set(storedUser);
+      this._isAuthenticated.set(true);
+
+      // Verify token validity
+      this.verifyToken().subscribe({
+        error: () => this.logout()
+      });
+    }
+  }
+
+  login(email: string, password: string): Observable<AuthResponse> {
+    this._isLoading.set(true);
+
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/users/login`, {
+      email,
+      password
+    }).pipe(
+      tap(response => {
+        this.handleAuthSuccess(response);
+      }),
+      catchError(error => {
+        this._isLoading.set(false);
+        throw error;
+      })
+    );
+  }
+
+  register(userData: {
+    name: string;
+    email: string;
+    password: string;
+    isAdmin?: boolean;
+  }): Observable<AuthResponse> {
+    this._isLoading.set(true);
+
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/users/register`, userData).pipe(
+      tap(response => {
+        this.handleAuthSuccess(response);
+      }),
+      catchError(error => {
+        this._isLoading.set(false);
+        throw error;
+      })
+    );
+  }
+
+  logout(): void {
+    const token = this.getToken();
+
+    // Call logout endpoint
+    if (token) {
+      this.http.post(`${environment.apiUrl}/auth/logout`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).subscribe();
+    }
+
+    // Clear local storage and state
+    this.clearAuthData();
+    this.router.navigate(['/home']);
+  }
+
+  refreshToken(): Observable<AuthResponse> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(
+      tap(response => {
+        if (response.token) {
+          this.setToken(response.token);
+        }
+        if (response.user) {
+          this._currentUser.set(response.user);
+          this.setStoredUser(response.user);
+        }
+      })
+    );
+  }
+
+  verifyToken(): Observable<{ user: User }> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    return this.http.get<{ user: User }>(`${environment.apiUrl}/auth/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(
+      tap(response => {
+        if (response.user) {
+          this._currentUser.set(response.user);
+          this.setStoredUser(response.user);
+        }
+      }),
+      catchError(error => {
+        if (error.status === 401) {
+          this.clearAuthData();
+        }
+        return of({ user: null as any });
+      })
+    );
+  }
+
+  updateProfile(userData: Partial<User>): Observable<User> {
+    const token = this.getToken();
+    const currentUser = this._currentUser();
+
+    if (!token || !currentUser) {
+      throw new Error('Authentication required');
+    }
+
+    return this.http.put<User>(`${environment.apiUrl}/users/${currentUser.id}`, userData, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(
+      tap(updatedUser => {
+        this._currentUser.set(updatedUser);
+        this.setStoredUser(updatedUser);
+      })
+    );
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+    const token = this.getToken();
+    const currentUser = this._currentUser();
+
+    if (!token || !currentUser) {
+      throw new Error('Authentication required');
+    }
+
+    return this.http.put(`${environment.apiUrl}/users/${currentUser.id}/password`, {
+      currentPassword,
+      password: newPassword
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  deleteAccount(): Observable<any> {
+    const token = this.getToken();
+    const currentUser = this._currentUser();
+
+    if (!token || !currentUser) {
+      throw new Error('Authentication required');
+    }
+
+    return this.http.delete(`${environment.apiUrl}/users/${currentUser.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(
+      tap(() => {
+        this.clearAuthData();
+        this.router.navigate(['/home']);
+      })
+    );
+  }
+
+  loginWithAuth0(): void {
+    if (this.isBrowser) {
+      window.location.href = `${environment.apiUrl}/auth/auth0`;
+    }
+  }
+
+  getAuthHeaders(): { [header: string]: string } {
+    const token = this.getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  private handleAuthSuccess(response: AuthResponse): void {
+    this.setToken(response.token);
+    this.setStoredUser(response.user);
+    this._currentUser.set(response.user);
+    this._isAuthenticated.set(true);
+    this._isLoading.set(false);
+  }
+
+  private clearAuthData(): void {
+    if (this.isBrowser) {
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+    }
+    this._currentUser.set(null);
+    this._isAuthenticated.set(false);
+    this._isLoading.set(false);
+  }
+
+  private getToken(): string | null {
+    if (!this.isBrowser) return null;
+    return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  private setToken(token: string): void {
+    if (this.isBrowser) {
+      localStorage.setItem(this.TOKEN_KEY, token);
+    }
+  }
+
+  private getStoredUser(): User | null {
+    if (!this.isBrowser) return null;
+
+    const userData = localStorage.getItem(this.USER_KEY);
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private setStoredUser(user: User): void {
+    if (this.isBrowser) {
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    }
+  }
+}
