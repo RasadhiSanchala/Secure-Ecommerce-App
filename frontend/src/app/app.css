@@ -1,3 +1,6 @@
+/* src/app/app.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 /* Navigation Styles */
 .navbar {
   background: #ffffff;
@@ -6,6 +9,7 @@
   top: 0;
   width: 100%;
   z-index: 1000;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .nav-container {
@@ -20,12 +24,13 @@
 
 .nav-logo a {
   font-size: 1.8rem;
-  font-weight: bold;
+  font-weight: 700;
   color: #c97d60;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .nav-menu {
@@ -33,7 +38,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  gap: 2rem;
+  gap: 1rem;
+  align-items: center;
 }
 
 .nav-item a {
@@ -43,12 +49,125 @@
   padding: 0.5rem 1rem;
   border-radius: 6px;
   transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
 }
 
 .nav-item a:hover,
 .nav-item a.active {
   color: #c97d60;
   background-color: #fff8f0;
+}
+
+/* User Dropdown */
+.nav-item.dropdown {
+  position: relative;
+}
+
+.user-dropdown {
+  position: relative;
+}
+
+.user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.user-btn:hover {
+  background-color: #f8f9fa;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c97d60, #b36749);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #333;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-arrow {
+  font-size: 0.7rem;
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+.user-dropdown:hover .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  min-width: 180px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.dropdown-menu.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-menu a,
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: #333;
+  transition: background-color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  border: none;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.dropdown-menu a:hover,
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.logout-btn:hover {
+  background-color: #fee;
+  color: #e74c3c;
+}
+
+.dropdown-icon {
+  font-size: 1rem;
 }
 
 .nav-toggle {
@@ -74,6 +193,7 @@
   margin-top: 70px;
   min-height: calc(100vh - 70px - 200px);
   padding: 2rem 0;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Footer Styles */
@@ -82,6 +202,7 @@
   color: #ffffff;
   padding: 3rem 0 1rem;
   margin-top: auto;
+  font-family: 'Inter', sans-serif;
 }
 
 .footer-content {
@@ -97,6 +218,7 @@
 .footer-section h4 {
   margin-bottom: 1rem;
   color: #c97d60;
+  font-weight: 600;
 }
 
 .footer-section ul {
@@ -116,6 +238,11 @@
 
 .footer-section a:hover {
   color: #c97d60;
+}
+
+.footer-section p {
+  line-height: 1.6;
+  color: #cccccc;
 }
 
 .footer-bottom {
@@ -140,6 +267,7 @@
     box-shadow: 0 10px 27px rgba(0, 0, 0, 0.05);
     gap: 0;
     padding: 1rem 0;
+    align-items: stretch;
   }
 
   .nav-menu.active {
@@ -148,6 +276,24 @@
 
   .nav-item {
     margin: 0.5rem 0;
+  }
+
+  .nav-item.dropdown {
+    align-self: center;
+  }
+
+  .user-btn {
+    justify-content: center;
+  }
+
+  .dropdown-menu {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    background: #f8f9fa;
+    margin-top: 0.5rem;
   }
 
   .nav-toggle {
@@ -174,6 +320,10 @@
     grid-template-columns: 1fr;
     text-align: center;
   }
+
+  .user-name {
+    max-width: 100px;
+  }
 }
 
 /* Global Body Styles */
@@ -181,4 +331,27 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Global Typography */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+p {
+  line-height: 1.6;
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+}
+
+input, select, textarea {
+  font-family: 'Inter', sans-serif;
 }

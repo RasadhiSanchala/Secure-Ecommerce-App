@@ -1,17 +1,9 @@
+// src/app/profile/profile.ts
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-  lastLogin?: Date | string;
-  emailVerified?: boolean;
-}
+import { AuthService, User } from '../services/auth.service';
 
 @Component({
   selector: 'app-profile',
@@ -21,7 +13,6 @@ interface User {
   styleUrl: './profile.css'
 })
 export class ProfileComponent implements OnInit {
-  user = signal<User | null>(null);
   profileForm: FormGroup;
   passwordForm: FormGroup;
   isUpdatingProfile = signal<boolean>(false);
@@ -30,11 +21,9 @@ export class ProfileComponent implements OnInit {
   successMessage = signal<string>('');
   errorMessage = signal<string>('');
 
-  private apiUrl = 'http://localhost:3000';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    public authService: AuthService,
     private router: Router
   ) {
     this.profileForm = this.fb.group({
@@ -54,34 +43,17 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUserProfile() {
-    // Try to get user from localStorage first
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        // Ensure the user data has required properties
-        if (userData && userData.id && userData.name && userData.email) {
-          this.user.set(userData);
-          this.profileForm.patchValue({
-            name: userData.name,
-            email: userData.email
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-      }
-    }
-
-    // Also fetch fresh data from API
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      this.http.get<any>(`${this.apiUrl}/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).subscribe({
+    const user = this.authService.currentUser();
+    if (user) {
+      this.profileForm.patchValue({
+        name: user.name,
+        email: user.email
+      });
+    } else {
+      // If no user in memory, try to verify token and get fresh data
+      this.authService.verifyToken().subscribe({
         next: (response) => {
-          if (response.user && response.user.id) {
-            this.user.set(response.user);
-            localStorage.setItem('user', JSON.stringify(response.user));
+          if (response.user) {
             this.profileForm.patchValue({
               name: response.user.name,
               email: response.user.email
@@ -95,15 +67,13 @@ export class ProfileComponent implements OnInit {
           }
         }
       });
-    } else {
-      this.router.navigate(['/login']);
     }
   }
 
   passwordMatchValidator(control: any): {[key: string]: boolean} | null {
     const newPassword = control.get('newPassword');
     const confirmNewPassword = control.get('confirmNewPassword');
-    
+
     if (!newPassword || !confirmNewPassword) {
       return null;
     }
@@ -124,30 +94,18 @@ export class ProfileComponent implements OnInit {
   }
 
   updateProfile() {
-    if (this.profileForm.valid && this.user()) {
+    if (this.profileForm.valid) {
       this.isUpdatingProfile.set(true);
       this.clearMessages();
 
-      const token = localStorage.getItem('authToken');
-      const currentUser = this.user();
       const updateData = {
         name: this.profileForm.get('name')?.value,
         email: this.profileForm.get('email')?.value
       };
 
-      this.http.put<any>(`${this.apiUrl}/users/${currentUser?.id}`, updateData, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).subscribe({
-        next: (response) => {
+      this.authService.updateProfile(updateData).subscribe({
+        next: (updatedUser) => {
           this.isUpdatingProfile.set(false);
-          if (currentUser) {
-            const updatedUser: User = {
-              ...currentUser,
-              ...updateData
-            };
-            this.user.set(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-          }
           this.showSuccess('Profile updated successfully!');
         },
         error: (error) => {
@@ -164,16 +122,10 @@ export class ProfileComponent implements OnInit {
       this.isChangingPassword.set(true);
       this.clearMessages();
 
-      const token = localStorage.getItem('authToken');
-      const passwordData = {
-        currentPassword: this.passwordForm.get('currentPassword')?.value,
-        password: this.passwordForm.get('newPassword')?.value
-      };
+      const currentPassword = this.passwordForm.get('currentPassword')?.value;
+      const newPassword = this.passwordForm.get('newPassword')?.value;
 
-      // Note: This would need to be implemented in your backend
-      this.http.put<any>(`${this.apiUrl}/users/${this.user()?.id}/password`, passwordData, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).subscribe({
+      this.authService.changePassword(currentPassword, newPassword).subscribe({
         next: (response) => {
           this.isChangingPassword.set(false);
           this.passwordForm.reset();
@@ -192,19 +144,9 @@ export class ProfileComponent implements OnInit {
     this.isRefreshing.set(true);
     this.clearMessages();
 
-    const token = localStorage.getItem('authToken');
-    this.http.post<any>(`${this.apiUrl}/auth/refresh`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).subscribe({
+    this.authService.refreshToken().subscribe({
       next: (response) => {
         this.isRefreshing.set(false);
-        if (response.token) {
-          localStorage.setItem('authToken', response.token);
-        }
-        if (response.user && response.user.id) {
-          localStorage.setItem('user', JSON.stringify(response.user));
-          this.user.set(response.user);
-        }
         this.showSuccess('Session refreshed successfully!');
       },
       error: (error) => {
@@ -219,36 +161,19 @@ export class ProfileComponent implements OnInit {
   }
 
   logout() {
-    const token = localStorage.getItem('authToken');
-    
-    // Call logout endpoint
-    this.http.post(`${this.apiUrl}/auth/logout`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).subscribe({
-      complete: () => {
-        // Clear local storage and redirect
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        this.router.navigate(['/home']);
-      }
-    });
-
-    // Clear immediately in case of API failure
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    this.router.navigate(['/home']);
+    this.authService.logout();
   }
 
   confirmDeleteAccount() {
     const confirmation = confirm(
       'Are you sure you want to delete your account? This action cannot be undone.'
     );
-    
+
     if (confirmation) {
       const secondConfirmation = confirm(
         'This will permanently delete all your data. Are you absolutely sure?'
       );
-      
+
       if (secondConfirmation) {
         this.deleteAccount();
       }
@@ -256,16 +181,9 @@ export class ProfileComponent implements OnInit {
   }
 
   deleteAccount() {
-    const token = localStorage.getItem('authToken');
-    
-    this.http.delete(`${this.apiUrl}/users/${this.user()?.id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).subscribe({
+    this.authService.deleteAccount().subscribe({
       next: () => {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
         alert('Your account has been deleted successfully.');
-        this.router.navigate(['/home']);
       },
       error: (error) => {
         console.error('Error deleting account:', error);
@@ -275,8 +193,9 @@ export class ProfileComponent implements OnInit {
   }
 
   getInitials(): string {
-    const name = this.user()?.name || 'User';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const user = this.authService.currentUser();
+    if (!user) return 'U';
+    return user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   private showSuccess(message: string) {

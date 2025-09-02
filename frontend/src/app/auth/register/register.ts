@@ -1,8 +1,9 @@
+// src/app/auth/register/register.ts
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -15,22 +16,19 @@ export class RegisterComponent {
   registerForm: FormGroup;
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
-  isLoading = signal<boolean>(false);
   errorMessage = signal<string>('');
   successMessage = signal<string>('');
 
-  private apiUrl = 'http://localhost:3000';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private authService: AuthService,
     private router: Router
   ) {
     this.registerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [
-        Validators.required, 
+        Validators.required,
         Validators.minLength(8),
         Validators.pattern(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
       ]],
@@ -43,16 +41,13 @@ export class RegisterComponent {
   passwordMatchValidator(control: AbstractControl): {[key: string]: boolean} | null {
     const password = control.get('password');
     const confirmPassword = control.get('confirmPassword');
-    
-    if (!password || !confirmPassword) {
-      return null;
-    }
+
+    if (!password || !confirmPassword) return null;
 
     if (password.value !== confirmPassword.value) {
       confirmPassword.setErrors({ passwordMismatch: true });
       return { passwordMismatch: true };
     } else {
-      // Clear the error if passwords match
       const errors = confirmPassword.errors;
       if (errors) {
         delete errors['passwordMismatch'];
@@ -103,61 +98,45 @@ export class RegisterComponent {
 
   onSubmit() {
     if (this.registerForm.valid) {
-      this.isLoading.set(true);
       this.errorMessage.set('');
       this.successMessage.set('');
 
-      const registerData = {
-        name: this.registerForm.get('name')?.value,
-        email: this.registerForm.get('email')?.value,
-        password: this.registerForm.get('password')?.value,
-        isAdmin: false
-      };
+      const { name, email, password } = this.registerForm.value;
 
-      this.http.post<any>(`${this.apiUrl}/users/register`, registerData)
-        .subscribe({
-          next: (response) => {
-            this.isLoading.set(false);
-            this.successMessage.set('Account created successfully! Redirecting...');
-            
-            // Store token in localStorage
-            if (response.token) {
-              localStorage.setItem('authToken', response.token);
-              localStorage.setItem('user', JSON.stringify(response.user));
-            }
-
-            // Redirect after short delay
-            setTimeout(() => {
-              this.router.navigate(['/home']);
-            }, 1500);
-          },
-          error: (error) => {
-            this.isLoading.set(false);
-            console.error('Registration error:', error);
-            this.errorMessage.set(
-              error.error?.message || 'Registration failed. Please try again.'
-            );
-          }
-        });
+      this.authService.register({ name, email, password }).subscribe({
+        next: (response) => {
+          this.successMessage.set('Account created successfully! Redirecting...');
+          setTimeout(() => {
+            this.router.navigate(['/home']);
+          }, 1500);
+        },
+        error: (error) => {
+          console.error('Registration error:', error);
+          this.errorMessage.set(
+            error.error?.message || 'Registration failed. Please try again.'
+          );
+        }
+      });
     } else {
       this.markFormGroupTouched();
     }
   }
 
   registerWithAuth0() {
-    // Redirect to Auth0 registration
-    window.location.href = `${this.apiUrl}/auth/auth0`;
+    this.authService.loginWithAuth0();
+  }
+
+  get isLoading() {
+    return this.authService.isLoading;
   }
 
   openTerms(event: Event) {
     event.preventDefault();
-    // TODO: Open terms of service modal or page
     alert('Terms of Service will be displayed here. For now, please contact hello@bakehouse.com for our terms.');
   }
 
   openPrivacy(event: Event) {
     event.preventDefault();
-    // TODO: Open privacy policy modal or page
     alert('Privacy Policy will be displayed here. For now, please contact hello@bakehouse.com for our privacy policy.');
   }
 

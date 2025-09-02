@@ -1,3 +1,4 @@
+<!-- src/app/products/products.html -->
 <div class="products-container">
   <div class="container">
     <header class="page-header">
@@ -10,37 +11,37 @@
         <label for="category">Category:</label>
         <select id="category" [(ngModel)]="selectedCategory" (change)="filterProducts()">
           <option value="">All Categories</option>
-          <option *ngFor="let category of categories()" [value]="category">{{category}}</option>
+          <option *ngFor="let category of productService.categories()" [value]="category">{{category}}</option>
         </select>
       </div>
-      
+
       <div class="search-group">
         <label for="search">Search:</label>
-        <input 
-          id="search" 
-          type="text" 
+        <input
+          id="search"
+          type="text"
           placeholder="Search products..."
-          [(ngModel)]="searchTerm" 
+          [(ngModel)]="searchTerm"
           (input)="filterProducts()"
         />
       </div>
     </div>
 
-    <div class="products-grid" *ngIf="!loading(); else loadingTemplate">
+    <div class="products-grid" *ngIf="!productService.isLoading(); else loadingTemplate">
       <div class="product-card" *ngFor="let product of filteredProducts()">
         <div class="product-image">
-          <img [src]="product.imageUrl || '/assets/images/default-product.jpg'" 
-               [alt]="product.name" 
+          <img [src]="product.imageUrl || '/assets/images/default-product.jpg'"
+               [alt]="product.name"
                (error)="onImageError($event)">
           <div class="product-category">{{product.category}}</div>
         </div>
-        
+
         <div class="product-info">
           <h3>{{product.name}}</h3>
           <p class="product-description">{{product.description}}</p>
           <div class="product-footer">
             <span class="product-price">${{product.price.toFixed(2)}}</span>
-            <button 
+            <button
               class="add-to-cart-btn"
               [class.unavailable]="!product.available"
               [disabled]="!product.available"
@@ -60,7 +61,7 @@
       </div>
     </ng-template>
 
-    <div class="no-products" *ngIf="!loading() && filteredProducts().length === 0">
+    <div class="no-products" *ngIf="!productService.isLoading() && filteredProducts().length === 0">
       <h3>No products found</h3>
       <p *ngIf="searchTerm() || selectedCategory()">
         Try adjusting your filters or search terms.

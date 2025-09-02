@@ -1,3 +1,4 @@
+<!-- src/app/profile/profile.html -->
 <div class="profile-container">
   <div class="container">
     <div class="profile-header">
@@ -7,12 +8,12 @@
         </div>
       </div>
       <div class="profile-info">
-        <h1>{{ user()?.name || 'User' }}</h1>
-        <p class="user-email">{{ user()?.email }}</p>
+        <h1>{{ authService.currentUser()?.name || 'User' }}</h1>
+        <p class="user-email">{{ authService.currentUser()?.email }}</p>
         <div class="user-badges">
-          <span class="badge admin" *ngIf="user()?.isAdmin">Admin</span>
-          <span class="badge verified" *ngIf="user()?.emailVerified">Verified</span>
-          <span class="badge unverified" *ngIf="!user()?.emailVerified">Unverified</span>
+          <span class="badge admin" *ngIf="authService.currentUser()?.isAdmin">Admin</span>
+          <span class="badge verified" *ngIf="authService.currentUser()?.emailVerified">Verified</span>
+          <span class="badge unverified" *ngIf="!authService.currentUser()?.emailVerified">Unverified</span>
         </div>
       </div>
     </div>
@@ -123,11 +124,11 @@
             <span *ngIf="!isRefreshing()">🔄 Refresh Session</span>
             <span *ngIf="isRefreshing()">Refreshing...</span>
           </button>
-          
+
           <button class="action-btn logout" (click)="logout()">
             🚪 Sign Out
           </button>
-          
+
           <button class="action-btn danger" (click)="confirmDeleteAccount()">
             ⚠️ Delete Account
           </button>
@@ -139,7 +140,7 @@
     <div class="message success" *ngIf="successMessage()">
       {{ successMessage() }}
     </div>
-    
+
     <div class="message error" *ngIf="errorMessage()">
       {{ errorMessage() }}
     </div>

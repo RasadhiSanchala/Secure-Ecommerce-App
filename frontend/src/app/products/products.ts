@@ -1,17 +1,8 @@
+// src/app/products/products.ts
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  imageUrl: string;
-  available: boolean;
-}
+import { ProductService, Product } from '../services/product.service';
 
 @Component({
   selector: 'app-products',
@@ -21,69 +12,39 @@ interface Product {
   styleUrl: './products.css'
 })
 export class ProductsComponent implements OnInit {
-  products = signal<Product[]>([]);
   filteredProducts = signal<Product[]>([]);
-  categories = signal<string[]>([]);
   selectedCategory = signal<string>('');
   searchTerm = signal<string>('');
-  loading = signal<boolean>(true);
 
-  private apiUrl = 'http://localhost:3000/products';
-
-  constructor(private http: HttpClient) {}
+  constructor(public productService: ProductService) {}
 
   ngOnInit() {
     this.loadProducts();
   }
 
   loadProducts() {
-    this.loading.set(true);
-    this.http.get<{products: Product[], count: number}>(`${this.apiUrl}`)
-      .subscribe({
-        next: (response) => {
-          this.products.set(response.products);
-          this.filteredProducts.set(response.products);
-          this.extractCategories();
-          this.loading.set(false);
-        },
-        error: (error) => {
-          console.error('Error loading products:', error);
-          this.loading.set(false);
-          // Set mock data for development
-          this.setMockData();
-        }
-      });
-  }
-
-  private extractCategories() {
-    const categorySet = new Set(this.products().map(p => p.category));
-    this.categories.set(Array.from(categorySet));
+    this.productService.getAllProducts().subscribe({
+      next: () => {
+        this.filteredProducts.set(this.productService.products());
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        // Set mock data for development
+        this.setMockData();
+      }
+    });
   }
 
   filterProducts() {
-    let filtered = this.products();
-
-    // Filter by category
-    if (this.selectedCategory()) {
-      filtered = filtered.filter(p => p.category === this.selectedCategory());
-    }
-
-    // Filter by search term
-    if (this.searchTerm()) {
-      const term = this.searchTerm().toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(term) || 
-        p.description.toLowerCase().includes(term)
-      );
-    }
-
+    const filtered = this.productService.filterProducts(
+      this.searchTerm(),
+      this.selectedCategory()
+    );
     this.filteredProducts.set(filtered);
   }
 
   addToCart(product: Product) {
     if (!product.available) return;
-    
-    // TODO: Implement cart functionality
     alert(`Added ${product.name} to cart! (Cart functionality coming soon)`);
   }
 
@@ -92,6 +53,7 @@ export class ProductsComponent implements OnInit {
   }
 
   private setMockData() {
+    // Mock data implementation stays the same
     const mockProducts: Product[] = [
       {
         _id: '1',
@@ -100,7 +62,10 @@ export class ProductsComponent implements OnInit {
         price: 8.99,
         category: 'Breads',
         imageUrl: '',
-        available: true
+        available: true,
+        stock: 20,
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
         _id: '2',
@@ -109,7 +74,10 @@ export class ProductsComponent implements OnInit {
         price: 4.50,
         category: 'Pastries',
         imageUrl: '',
-        available: true
+        available: true,
+        stock: 15,
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
         _id: '3',
@@ -118,7 +86,10 @@ export class ProductsComponent implements OnInit {
         price: 24.99,
         category: 'Cakes',
         imageUrl: '',
-        available: true
+        available: true,
+        stock: 5,
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
         _id: '4',
@@ -127,12 +98,16 @@ export class ProductsComponent implements OnInit {
         price: 3.25,
         category: 'Muffins',
         imageUrl: '',
-        available: true
+        available: true,
+        stock: 25,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
     ];
 
-    this.products.set(mockProducts);
+    // Simulate the service behavior
+    this.productService['_products'].set(mockProducts);
+    this.productService['_categories'].set(['Breads', 'Pastries', 'Cakes', 'Muffins']);
     this.filteredProducts.set(mockProducts);
-    this.extractCategories();
   }
 }
