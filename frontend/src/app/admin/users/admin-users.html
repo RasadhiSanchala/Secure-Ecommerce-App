@@ -1,0 +1,222 @@
+<!-- frontend/src/app/admin/users/admin-users.html -->
+<div class="admin-users">
+  <div class="container">
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>User Management</h1>
+        <p>Manage user accounts and permissions</p>
+      </div>
+      <div class="header-actions">
+        <a routerLink="/admin" class="btn btn-secondary">
+          ← Back to Dashboard
+        </a>
+        <button class="btn btn-primary" (click)="exportUsers()">
+          <span>📊</span> Export Users
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    @if (successMessage()) {
+      <div class="alert alert-success">
+        {{ successMessage() }}
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="alert alert-error">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <h3>{{ totalUsers() }}</h3>
+          <p>Total Users</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">👑</div>
+        <div class="stat-content">
+          <h3>{{ adminUsers() }}</h3>
+          <p>Admin Users</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <h3>{{ verifiedUsers() }}</h3>
+          <p>Verified Users</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">🔐</div>
+        <div class="stat-content">
+          <h3>{{ auth0Users() }}</h3>
+          <p>Auth0 Users</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filters">
+        <div class="search-group">
+          <label for="search">Search Users</label>
+          <input
+            id="search"
+            type="text"
+            placeholder="Search by name or email..."
+            [(ngModel)]="searchTerm"
+            (input)="filterUsers()"
+          >
+        </div>
+
+        <div class="filter-group">
+          <label for="role">Filter by Role/Status</label>
+          <select id="role" [(ngModel)]="selectedRole" (change)="filterUsers()">
+            <option value="">All Users</option>
+            <option value="admin">Admins Only</option>
+            <option value="user">Regular Users</option>
+            <option value="verified">Verified Email</option>
+            <option value="unverified">Unverified Email</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="results-info">
+        <span>{{ filteredUsers().length }} users found</span>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading" *ngIf="isLoading()">
+      <div class="spinner"></div>
+      <p>Loading users...</p>
+    </div>
+
+    <!-- Users Table -->
+    <div class="users-section" *ngIf="!isLoading()">
+      <div class="users-table" *ngIf="filteredUsers().length > 0">
+        <table>
+          <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Email Status</th>
+            <th>Auth Type</th>
+            <th>Created</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr *ngFor="let user of filteredUsers()">
+            <td class="user-info">
+              <div class="user-main">
+                <div class="user-avatar">{{ getInitials(user.name) }}</div>
+                <div class="user-details">
+                  <h4>{{ user.name }}</h4>
+                  <p class="user-email">{{ user.email }}</p>
+                </div>
+              </div>
+            </td>
+
+            <td class="role-cell">
+                <span class="role-badge" [class.admin]="user.isAdmin">
+                  {{ user.isAdmin ? 'Admin' : 'User' }}
+                </span>
+            </td>
+
+            <td class="email-status">
+                <span class="status-badge" [class.verified]="user.emailVerified">
+                  {{ user.emailVerified ? '✅ Verified' : '❌ Unverified' }}
+                </span>
+            </td>
+
+            <td class="auth-type">
+                <span class="auth-badge" [class.auth0]="user.auth0Id">
+                  {{ user.auth0Id ? '🔐 Auth0' : '🔑 Local' }}
+                </span>
+            </td>
+
+            <td class="date-cell">
+              {{ formatDate(user.createdAt) }}
+            </td>
+
+            <td class="date-cell">
+                <span *ngIf="user.lastLogin; else noLogin">
+                  {{ formatDate(user.lastLogin) }}
+                </span>
+              <ng-template #noLogin>
+                <span class="no-login">Never</span>
+              </ng-template>
+            </td>
+
+            <td class="actions-cell">
+              <button
+                class="action-btn toggle-role"
+                (click)="toggleUserRole(user)"
+                [title]="user.isAdmin ? 'Demote to User' : 'Promote to Admin'"
+                [disabled]="user.id === authService.currentUser()?.id"
+              >
+                {{ user.isAdmin ? '👤' : '👑' }}
+              </button>
+
+              <button
+                class="action-btn toggle-verification"
+                (click)="toggleEmailVerification(user)"
+                [title]="user.emailVerified ? 'Mark as Unverified' : 'Mark as Verified'"
+              >
+                {{ user.emailVerified ? '❌' : '✅' }}
+              </button>
+
+              <button
+                class="action-btn delete"
+                (click)="deleteUser(user)"
+                title="Delete User"
+                [disabled]="user.id === authService.currentUser()?.id"
+              >
+                🗑️
+              </button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="filteredUsers().length === 0">
+        <h3>No users found</h3>
+        <p *ngIf="searchTerm() || selectedRole()">
+          Try adjusting your search or filter settings.
+        </p>
+        <p *ngIf="!searchTerm() && !selectedRole()">
+          No users in the system yet.
+        </p>
+
+        <button class="btn btn-secondary" (click)="searchTerm.set(''); selectedRole.set(''); filterUsers()" *ngIf="searchTerm() || selectedRole()">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Warning Note -->
+    <div class="warning-note">
+      <h4>⚠️ Important Notes:</h4>
+      <ul>
+        <li>You cannot modify or delete your own admin account</li>
+        <li>Deleting a user will permanently remove all their data including orders</li>
+        <li>Email verification status can be manually toggled for troubleshooting</li>
+        <li>Auth0 users have their passwords managed externally</li>
+      </ul>
+    </div>
+  </div>
+</div>
