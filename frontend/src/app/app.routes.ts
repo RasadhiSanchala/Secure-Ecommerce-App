@@ -24,28 +24,28 @@ export const routes: Routes = [
   { path: 'orders', component: OrdersComponent },
 
   // Admin routes
-  /*{
+  {
     path: 'admin',
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        loadComponent: () => import('./admin/dashboard/admin-dashboard.component').then(c => c.AdminDashboardComponent)
+        loadComponent: () => import('./admin/dashboard/admin-dashboard').then(c => c.AdminDashboardComponent)
       },
       {
         path: 'products',
-        loadComponent: () => import('./admin/products/admin-products.component').then(c => c.AdminProductsComponent)
+        loadComponent: () => import('./admin/products/admin-products').then(c => c.AdminProductsComponent)
       },
       {
         path: 'orders',
-        loadComponent: () => import('./admin/orders/admin-orders.component').then(c => c.AdminOrdersComponent)
+        loadComponent: () => import('./admin/orders/admin-orders').then(c => c.AdminOrdersComponent)
       },
       {
         path: 'users',
-        loadComponent: () => import('./admin/users/admin-users.component').then(c => c.AdminUsersComponent)
+        loadComponent: () => import('./admin/users/admin-users').then(c => c.AdminUsersComponent)
       }
     ]
-  },*/
+  },
 
   // Cart routes
   /*{

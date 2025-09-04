@@ -155,6 +155,7 @@ exports.createOrder = async (req, res) => {
             message: `Product ${product.name} is not available`
           });
         }
+        item.priceAtTime = product.price;
         calculatedTotal += product.price * (item.quantity || 1);
       }
     }

@@ -1,4 +1,4 @@
-<!-- frontend/src/app/orders/orders.html - Fixed template with proper Angular syntax -->
+<!-- frontend/src/app/orders/orders.html - Updated to show personal orders only -->
 <div class="orders-container">
   <div class="container">
     <!-- Authentication Check -->
@@ -10,8 +10,12 @@
     <!-- Main Content (only show if authenticated) -->
     <div *ngIf="isAuthenticated()">
       <header class="page-header">
-        <h1>{{ isAdmin() ? 'Order Management' : 'My Orders' }}</h1>
-        <p>{{ isAdmin() ? 'Manage all customer orders' : 'Track your order history' }}</p>
+        <h1>My Orders</h1>
+        <p>Track your order history and status</p>
+        <!-- Admin note -->
+        <div class="admin-note" *ngIf="isAdmin()">
+          <p>📋 <strong>Admin:</strong> These are your personal orders. To manage all customer orders, visit the <a routerLink="/admin/orders">Admin Order Management</a> page.</p>
+        </div>
       </header>
 
       <!-- Error Message -->
@@ -19,28 +23,8 @@
         {{ errorMessage() }}
       </div>
 
-      <!-- Admin Stats Dashboard -->
-      <div class="orders-stats" *ngIf="isAdmin()">
-        <div class="stat-card">
-          <h3>{{ adminStats().totalOrders || 0 }}</h3>
-          <p>Total Orders</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ formatCurrency(adminStats().totalRevenue || 0) }}</h3>
-          <p>Total Revenue</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ formatCurrency(adminStats().averageOrderValue || 0) }}</h3>
-          <p>Average Order Value</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ getPendingOrdersCount() }}</h3>
-          <p>Pending Orders</p>
-        </div>
-      </div>
-
       <!-- User Stats -->
-      <div class="orders-stats" *ngIf="!isAdmin()">
+      <div class="orders-stats">
         <div class="stat-card">
           <h3>{{ userOrderStats().total }}</h3>
           <p>Total Orders</p>
@@ -72,23 +56,12 @@
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-
-        <!-- Admin-only filters -->
-        <div class="filter-group" *ngIf="isAdmin()">
-          <label for="pageSize">Orders per page:</label>
-          <select id="pageSize" [(ngModel)]="pageSize" (change)="filterOrders()">
-            <option [value]="10">10</option>
-            <option [value]="20">20</option>
-            <option [value]="50">50</option>
-            <option [value]="100">100</option>
-          </select>
-        </div>
       </div>
 
       <!-- Loading State -->
       <div class="loading" *ngIf="orderService.isLoading()">
         <div class="spinner"></div>
-        <p>Loading orders...</p>
+        <p>Loading your orders...</p>
       </div>
 
       <!-- Orders Grid -->
@@ -104,12 +77,6 @@
                 {{ getStatusText(order.status) }}
               </span>
             </div>
-          </div>
-
-          <!-- Customer Info (Admin only) -->
-          <div class="order-customer" *ngIf="isAdmin()">
-            <p><strong>Customer:</strong> {{ order.user.name }}</p>
-            <p><strong>Email:</strong> {{ order.user.email }}</p>
           </div>
 
           <!-- Order Items -->
@@ -158,65 +125,18 @@
               <button class="btn btn-primary btn-sm" (click)="viewOrderDetails(order._id)">
                 View Details
               </button>
-
-              <!-- Admin Actions -->
-              <select
-                *ngIf="isAdmin()"
-                [value]="order.status"
-                (change)="updateOrderStatus(order._id, $event)"
-                class="status-select"
-              >
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="shipped">Shipped</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-
-              <button
-                *ngIf="isAdmin()"
-                class="btn btn-danger btn-sm"
-                (click)="deleteOrder(order._id)"
-              >
-                Delete
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Pagination (Admin only) -->
-      <div class="pagination" *ngIf="isAdmin() && !orderService.isLoading() && totalPages > 1">
-        <button
-          class="btn btn-secondary btn-sm"
-          [disabled]="currentPage() === 1"
-          (click)="changePage(currentPage() - 1)"
-        >
-          Previous
-        </button>
-
-        <span class="page-info">
-          Page {{ currentPage() }} of {{ totalPages }}
-        </span>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          [disabled]="currentPage() === totalPages"
-          (click)="changePage(currentPage() + 1)"
-        >
-          Next
-        </button>
-      </div>
-
       <!-- Empty State -->
       <div class="no-orders" *ngIf="!orderService.isLoading() && filteredOrders().length === 0">
         <h3>No orders found</h3>
-        <p *ngIf="!isAdmin() && !selectedStatus()">You haven't placed any orders yet.</p>
-        <p *ngIf="!isAdmin() && selectedStatus()">No orders with status "{{ selectedStatus() }}".</p>
-        <p *ngIf="isAdmin() && !selectedStatus()">No orders in the system.</p>
-        <p *ngIf="isAdmin() && selectedStatus()">No orders with status "{{ selectedStatus() }}".</p>
+        <p *ngIf="!selectedStatus()">You haven't placed any orders yet.</p>
+        <p *ngIf="selectedStatus()">No orders with status "{{ selectedStatus() }}".</p>
 
-        <a routerLink="/products" class="btn btn-primary" *ngIf="!isAdmin()">
+        <a routerLink="/products" class="btn btn-primary" *ngIf="!selectedStatus()">
           Start Shopping
         </a>
 

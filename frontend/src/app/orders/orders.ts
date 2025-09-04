@@ -1,4 +1,4 @@
-// frontend/src/app/orders/orders.ts - Fixed version with proper error handling
+// frontend/src/app/orders/orders.ts - Final fixed version
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
@@ -15,16 +15,14 @@ import { AuthService } from '../services/auth.service';
 })
 export class OrdersComponent implements OnInit {
   selectedStatus = signal<string>('');
-  currentPage = signal<number>(1);
-  pageSize = signal<number>(20);
   errorMessage = signal<string>('');
 
   // Computed properties
   filteredOrders = signal<Order[]>([]);
-  isAdmin = computed(() => this.authService.isAdmin());
   isAuthenticated = computed(() => this.authService.isAuthenticated());
+  isAdmin = computed(() => this.authService.isAdmin());
 
-  // User order stats
+  // Personal order stats (not admin stats)
   userOrderStats = computed(() => {
     const orders = this.orderService.userOrders();
     return {
@@ -33,17 +31,6 @@ export class OrdersComponent implements OnInit {
       delivered: orders.filter(o => o.status === 'delivered').length,
       totalSpent: orders.reduce((sum, o) => sum + o.total, 0)
     };
-  });
-
-  // Admin order stats (from service)
-  adminStats = computed(() => this.orderService.adminStats());
-
-  // Helper method for template
-  getPendingOrdersCount = computed(() => {
-    const stats = this.adminStats();
-    if (!stats.statusBreakdown) return 0;
-    const pendingStatus = stats.statusBreakdown.find((s: { _id: string; }) => s._id === 'pending');
-    return pendingStatus?.count || 0;
   });
 
   constructor(
@@ -59,111 +46,66 @@ export class OrdersComponent implements OnInit {
       return;
     }
 
-    this.loadOrders();
+    this.loadUserOrders();
   }
 
-  loadOrders() {
+  loadUserOrders() {
     this.errorMessage.set('');
 
-    if (this.isAdmin()) {
-      // Load all orders for admin with pagination and filtering
-      const params = {
-        page: this.currentPage(),
-        limit: this.pageSize(),
-        ...(this.selectedStatus() && { status: this.selectedStatus() })
-      };
-
-      this.orderService.getAllOrdersAdmin(params).subscribe({
-        next: (response) => {
-          this.filteredOrders.set(response.orders);
-        },
-        error: (error) => {
-          console.error('Error loading admin orders:', error);
-          this.handleError(error, 'Failed to load orders');
-        }
-      });
-    } else {
-      // Load user's orders only
-      this.orderService.getUserOrders().subscribe({
-        next: (response) => {
-          let orders = response.orders;
-
-          // Apply status filter if selected
-          if (this.selectedStatus()) {
-            orders = orders.filter(order => order.status === this.selectedStatus());
-          }
-
-          this.filteredOrders.set(orders);
-        },
-        error: (error) => {
-          console.error('Error loading user orders:', error);
-          this.handleError(error, 'Failed to load your orders');
-        }
-      });
-    }
-  }
-
-  filterOrders() {
-    this.currentPage.set(1); // Reset to first page when filtering
-    this.loadOrders();
-  }
-
-  changePage(page: number) {
-    this.currentPage.set(page);
-    this.loadOrders();
-  }
-
-  updateOrderStatus(orderId: string, event: any) {
-    const newStatus = event.target.value;
-    this.orderService.updateOrderStatus(orderId, { status: newStatus }).subscribe({
+    // ALWAYS load user's personal orders, even for admins
+    this.orderService.getUserOrders().subscribe({
       next: (response) => {
-        console.log('Order status updated successfully');
-        this.showSuccess(`Order status updated to ${newStatus}`);
+        let orders = response.orders;
+
+        // Apply status filter if selected
+        if (this.selectedStatus()) {
+          orders = orders.filter(order => order.status === this.selectedStatus());
+        }
+
+        this.filteredOrders.set(orders);
       },
       error: (error) => {
-        console.error('Error updating order status:', error);
-        this.showError('Failed to update order status');
-        // Revert the select value
-        event.target.value = this.getOrderStatus(orderId);
+        console.error('Error loading user orders:', error);
+        this.handleError(error, 'Failed to load your orders');
       }
     });
   }
 
-  deleteOrder(orderId: string) {
-    if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-      this.orderService.deleteOrder(orderId).subscribe({
-        next: () => {
-          console.log('Order deleted successfully');
-          this.showSuccess('Order deleted successfully');
-        },
-        error: (error) => {
-          console.error('Error deleting order:', error);
-          this.showError('Failed to delete order');
-        }
-      });
-    }
+  filterOrders() {
+    this.loadUserOrders();
   }
 
   viewOrderDetails(orderId: string) {
-    // Use appropriate method based on user role
-    const orderObservable = this.isAdmin()
-      ? this.orderService.getOrderAdmin(orderId)
-      : this.orderService.getUserOrder(orderId);
-
-    orderObservable.subscribe({
+    // Use user-specific order endpoint
+    this.orderService.getUserOrder(orderId).subscribe({
       next: (response) => {
-        // For now, just show an alert. Later you can implement a modal or separate page
         const order = response.order;
-        alert(`
-Order Details:
-- ID: ${order._id}
-- Customer: ${order.user.name} (${order.user.email})
-- Total: $${order.total.toFixed(2)}
-- Status: ${order.status}
-- Created: ${this.formatDate(order.createdAt)}
-- Items: ${order.products.length}
+        const itemsList = order.products.map(p =>
+          `• ${p.product.name} (Qty: ${p.quantity}) - $${(p.priceAtTime * p.quantity).toFixed(2)}`
+        ).join('\n');
 
-(Detailed order view coming soon!)
+        alert(`
+YOUR ORDER DETAILS
+
+Order ID: ${order._id.slice(-8).toUpperCase()}
+Status: ${this.getStatusText(order.status)}
+Date: ${this.formatDate(order.createdAt)}
+
+ITEMS:
+${itemsList}
+
+SHIPPING ADDRESS:
+${order.shippingAddress.street}
+${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zipCode}
+${order.shippingAddress.country}
+
+PAYMENT:
+Method: ${order.paymentMethod.replace('_', ' ')}
+Status: ${order.paymentStatus}
+
+${order.notes ? `NOTES:\n${order.notes}` : ''}
+
+TOTAL: $${order.total.toFixed(2)}
         `);
       },
       error: (error) => {
@@ -174,11 +116,6 @@ Order Details:
   }
 
   // Helper methods
-  getOrderStatus(orderId: string): string {
-    const order = this.filteredOrders().find(o => o._id === orderId);
-    return order?.status || '';
-  }
-
   getStatusColor(status: string): string {
     return this.orderService.getOrderStatusColor(status as any);
   }
@@ -201,7 +138,7 @@ Order Details:
     return `$${amount.toFixed(2)}`;
   }
 
-  // Error and success handling
+  // Error handling
   private handleError(error: any, defaultMessage: string) {
     if (error.status === 401) {
       // Token expired or invalid, redirect to login
@@ -215,25 +152,8 @@ Order Details:
     setTimeout(() => this.errorMessage.set(''), 5000);
   }
 
-  private showSuccess(message: string) {
-    // Implement your success message display logic
-    console.log('SUCCESS:', message);
-    // You could also set a success signal similar to errorMessage
-  }
-
   private showError(message: string) {
     this.errorMessage.set(message);
     setTimeout(() => this.errorMessage.set(''), 5000);
-  }
-
-  // Pagination helpers for admin view
-  get totalPages(): number {
-    const stats = this.adminStats();
-    return Math.ceil((stats.totalOrders || 0) / this.pageSize());
-  }
-
-  get paginationArray(): number[] {
-    const total = this.totalPages;
-    return Array.from({ length: total }, (_, i) => i + 1);
   }
 }

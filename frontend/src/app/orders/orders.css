@@ -530,3 +530,29 @@
     border: 1px solid #ddd;
   }
 }
+
+
+/* Admin Note */
+.admin-note {
+  background: #fff8f0;
+  border: 1px solid #c97d60;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-note p {
+  margin: 0;
+  color: #8b5a3c;
+  font-size: 0.95rem;
+}
+
+.admin-note a {
+  color: #c97d60;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.admin-note a:hover {
+  text-decoration: underline;
+}
