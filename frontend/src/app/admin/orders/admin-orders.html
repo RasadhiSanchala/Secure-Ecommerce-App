@@ -1,0 +1,219 @@
+<!-- frontend/src/app/admin/orders/admin-orders.html - FIXED VERSION -->
+<div class="admin-orders">
+  <div class="container">
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>Order Management</h1>
+        <p>Manage all customer orders and track their status</p>
+      </div>
+      <div class="header-actions">
+        <a routerLink="/admin" class="btn btn-secondary">
+          ← Back to Dashboard
+        </a>
+        <button class="btn btn-primary" (click)="exportOrders()">
+          <span>📊</span> Export Orders
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="alert alert-success" *ngIf="successMessage()">
+      {{ successMessage() }}
+    </div>
+
+    <div class="alert alert-error" *ngIf="errorMessage()">
+      {{ errorMessage() }}
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-content">
+          <h3>{{ adminStats().totalOrders || 0 }}</h3>
+          <p>Total Orders</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+          <h3>{{ formatCurrency(adminStats().totalRevenue || 0) }}</h3>
+          <p>Total Revenue</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+          <h3>{{ formatCurrency(adminStats().averageOrderValue || 0) }}</h3>
+          <p>Average Order Value</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-content">
+          <h3>{{ pendingOrdersCount() }}</h3>
+          <p>Pending Orders</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filters">
+        <div class="filter-group">
+          <label for="status">Filter by Status</label>
+          <select id="status" [(ngModel)]="selectedStatus" (change)="filterOrders()">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="pageSize">Orders per page</label>
+          <select id="pageSize" [(ngModel)]="pageSize" (change)="filterOrders()">
+            <option [value]="10">10</option>
+            <option [value]="20">20</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="results-info">
+        <span>Page {{ currentPage() }} of {{ totalPages() }}</span>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading" *ngIf="orderService.isLoading()">
+      <div class="spinner"></div>
+      <p>Loading orders...</p>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="orders-section" *ngIf="!orderService.isLoading()">
+      <div class="orders-table" *ngIf="filteredOrders().length > 0">
+        <table>
+          <thead>
+          <tr>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr *ngFor="let order of filteredOrders()">
+            <td class="order-info">
+              <h4>#{{ order._id.slice(-8).toUpperCase() }}</h4>
+              <p class="payment-info">{{ order.paymentMethod.replace('_', ' ') | titlecase }}</p>
+            </td>
+
+            <td class="customer-info">
+              <h4>{{ order.user.name }}</h4>
+              <p>{{ order.user.email }}</p>
+            </td>
+
+            <td class="items-info">
+              <span class="items-count">{{ order.products.length }} items</span>
+              <div class="items-preview">
+                  <span *ngFor="let item of order.products.slice(0, 2); let last = last">
+                    {{ item.product.name }} ({{ item.quantity }}){{ !last ? ',' : '' }}
+                  </span>
+                <span *ngIf="order.products.length > 2"> +{{ order.products.length - 2 }} more</span>
+              </div>
+            </td>
+
+            <td class="order-total">
+              <strong>{{ formatCurrency(order.total) }}</strong>
+              <p class="payment-status" [class]="'status-' + order.paymentStatus">
+                {{ order.paymentStatus | titlecase }}
+              </p>
+            </td>
+
+            <td class="status-cell">
+              <select
+                [value]="order.status"
+                (change)="updateOrderStatus(order._id, $event)"
+                class="status-select"
+              >
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </td>
+
+            <td class="date-cell">
+              {{ formatDate(order.createdAt) }}
+            </td>
+
+            <td class="actions-cell">
+              <button class="action-btn view" (click)="viewOrderDetails(order._id)" title="View Details">
+                👁️
+              </button>
+              <button class="action-btn delete" (click)="deleteOrder(order._id)" title="Delete Order">
+                🗑️
+              </button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="filteredOrders().length === 0">
+        <h3>No orders found</h3>
+        <p *ngIf="selectedStatus()">No orders with status "{{ selectedStatus() }}".</p>
+        <p *ngIf="!selectedStatus()">No orders in the system yet.</p>
+
+        <button class="btn btn-secondary" (click)="selectedStatus.set(''); filterOrders()" *ngIf="selectedStatus()">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="!orderService.isLoading() && totalPages() > 1">
+      <button
+        class="btn btn-secondary btn-sm"
+        [disabled]="currentPage() === 1"
+        (click)="changePage(currentPage() - 1)"
+      >
+        Previous
+      </button>
+
+      <div class="page-numbers">
+        <button
+          *ngFor="let page of getPaginationArray()"
+          class="page-btn"
+          [class.active]="isPageNumber(page) && page === currentPage()"
+          [disabled]="isPageDisabled(page)"
+          (click)="onPageClick(page)"
+        >
+          {{ page }}
+        </button>
+      </div>
+
+      <button
+        class="btn btn-secondary btn-sm"
+        [disabled]="currentPage() === totalPages()"
+        (click)="changePage(currentPage() + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</div>
