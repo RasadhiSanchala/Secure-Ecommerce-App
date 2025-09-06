@@ -28,7 +28,7 @@ router.get('/auth0/callback',
 
     // Redirect to frontend with token
     // You can customize this URL based on your frontend setup
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://localhost:4200';
     res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
   }
 );
@@ -74,7 +74,7 @@ router.post('/logout', (req, res) => {
 
 // Auth0 logout
 router.get('/auth0/logout', (req, res) => {
-  const returnTo = encodeURIComponent(process.env.FRONTEND_URL || 'http://localhost:4200');
+  const returnTo = encodeURIComponent(process.env.FRONTEND_URL || 'https://localhost:4200');
   const logoutUrl = `https://${process.env.AUTH0_DOMAIN}/v2/logout?client_id=${process.env.AUTH0_CLIENT_ID}&returnTo=${returnTo}`;
   res.redirect(logoutUrl);
 });

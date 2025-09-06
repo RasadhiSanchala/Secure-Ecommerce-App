@@ -8,13 +8,17 @@ const helmet = require('helmet');
 const session = require('express-session');
 const connectDB = require('./config/db');
 
-const port = process.env.PORT || 3000;
+const path=require('path');
+const https = require('https');
+const fs =  require('fs');
+
+const port = process.env.PORT || 3005;
 const app = express();
 
 // Basic middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+  origin: process.env.FRONTEND_URL || 'https://localhost:4200',
   credentials: true
 }));
 app.use(express.json());
@@ -61,8 +65,23 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(port, () => {
+/*app.listen(port, () => {
   console.log(`Server running on: http://localhost:${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});*/
+
+// HTTPS Configuration
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, '../certs/localhost.key')),
+  cert: fs.readFileSync(path.join(__dirname, '../certs/localhost.crt'))
+};
+
+// Create HTTPS server
+const server = https.createServer(httpsOptions, app);
+
+// Start HTTPS server
+server.listen(port, () => {
+  console.log(`HTTPS Server running on: https://localhost:${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

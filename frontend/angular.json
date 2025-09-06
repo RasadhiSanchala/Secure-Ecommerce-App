@@ -62,7 +62,10 @@
               "buildTarget": "frontend:build:production"
             },
             "development": {
-              "buildTarget": "frontend:build:development"
+              "buildTarget": "frontend:build:development",
+              "ssl": true,
+              "sslKey": "../certs/localhost.key",
+              "sslCert": "../certs/localhost.crt"
             }
           },
           "defaultConfiguration": "development"
