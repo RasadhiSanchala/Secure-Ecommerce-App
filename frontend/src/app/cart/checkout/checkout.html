@@ -1,0 +1,251 @@
+<!-- frontend/src/app/cart/checkout/checkout.html -->
+<div class="checkout-container">
+  <div class="container">
+    <header class="page-header">
+      <h1>Checkout</h1>
+      <p>Complete your order</p>
+    </header>
+
+    <!-- Error Messages -->
+    <div class="alert alert-error" *ngIf="errorMessage()">
+      {{ errorMessage() }}
+    </div>
+
+    <!-- Success Messages -->
+    <div class="alert alert-success" *ngIf="successMessage()">
+      {{ successMessage() }}
+    </div>
+
+    <!-- Cart Validation Errors -->
+    <div class="alert alert-error" *ngIf="!cartValidation().isValid">
+      <h4>Cart Issues:</h4>
+      <ul>
+        <li *ngFor="let error of cartValidation().errors">{{ error }}</li>
+      </ul>
+      <a routerLink="/cart" class="btn btn-secondary btn-sm">Fix Cart Issues</a>
+    </div>
+
+    <div class="checkout-content">
+      <!-- Checkout Form -->
+      <div class="checkout-form">
+        <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
+          <!-- Shipping Information -->
+          <div class="form-section">
+            <h2>Shipping Information</h2>
+
+            <div class="form-group">
+              <label for="street">Street Address *</label>
+              <input
+                type="text"
+                id="street"
+                formControlName="street"
+                [class.error]="checkoutForm.get('street')?.invalid && checkoutForm.get('street')?.touched"
+                placeholder="123 Main Street, Apt 4"
+              >
+              <div class="error-message" *ngIf="checkoutForm.get('street')?.invalid && checkoutForm.get('street')?.touched">
+                <span *ngIf="checkoutForm.get('street')?.errors?.['required']">Street address is required</span>
+                <span *ngIf="checkoutForm.get('street')?.errors?.['minlength']">Please enter a complete address</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="city">City *</label>
+                <input
+                  type="text"
+                  id="city"
+                  formControlName="city"
+                  [class.error]="checkoutForm.get('city')?.invalid && checkoutForm.get('city')?.touched"
+                  placeholder="New York"
+                >
+                <div class="error-message" *ngIf="checkoutForm.get('city')?.invalid && checkoutForm.get('city')?.touched">
+                  <span *ngIf="checkoutForm.get('city')?.errors?.['required']">City is required</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="state">State/Province *</label>
+                <input
+                  type="text"
+                  id="state"
+                  formControlName="state"
+                  [class.error]="checkoutForm.get('state')?.invalid && checkoutForm.get('state')?.touched"
+                  placeholder="NY"
+                >
+                <div class="error-message" *ngIf="checkoutForm.get('state')?.invalid && checkoutForm.get('state')?.touched">
+                  <span *ngIf="checkoutForm.get('state')?.errors?.['required']">State is required</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="zipCode">ZIP Code *</label>
+                <input
+                  type="text"
+                  id="zipCode"
+                  formControlName="zipCode"
+                  [class.error]="checkoutForm.get('zipCode')?.invalid && checkoutForm.get('zipCode')?.touched"
+                  placeholder="12345"
+                >
+                <div class="error-message" *ngIf="checkoutForm.get('zipCode')?.invalid && checkoutForm.get('zipCode')?.touched">
+                  <span *ngIf="checkoutForm.get('zipCode')?.errors?.['required']">ZIP code is required</span>
+                  <span *ngIf="checkoutForm.get('zipCode')?.errors?.['pattern']">Please enter a valid ZIP code</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="country">Country *</label>
+                <select
+                  id="country"
+                  formControlName="country"
+                  [class.error]="checkoutForm.get('country')?.invalid && checkoutForm.get('country')?.touched"
+                >
+                  <option value="Sri Lanka">Sri Lanka</option>
+                  <option value="United States">United States</option>
+                  <option value="Canada">Canada</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Australia">Australia</option>
+                  <option value="Germany">Germany</option>
+                  <option value="France">France</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Information -->
+          <div class="form-section">
+            <h2>Payment Method</h2>
+
+            <div class="payment-options">
+              <label class="payment-option">
+                <input type="radio" formControlName="paymentMethod" value="credit_card">
+                <div class="payment-option-content">
+                  <span class="payment-icon">💳</span>
+                  <span>Credit Card</span>
+                </div>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" formControlName="paymentMethod" value="debit_card">
+                <div class="payment-option-content">
+                  <span class="payment-icon">💳</span>
+                  <span>Debit Card</span>
+                </div>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" formControlName="paymentMethod" value="paypal">
+                <div class="payment-option-content">
+                  <span class="payment-icon">📱</span>
+                  <span>PayPal</span>
+                </div>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" formControlName="paymentMethod" value="cash_on_delivery">
+                <div class="payment-option-content">
+                  <span class="payment-icon">💵</span>
+                  <span>Cash on Delivery</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Order Notes -->
+          <div class="form-section">
+            <h2>Order Notes (Optional)</h2>
+
+            <div class="form-group">
+              <label for="notes">Special Instructions</label>
+              <textarea
+                id="notes"
+                formControlName="notes"
+                placeholder="Any special delivery instructions..."
+                rows="3"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions">
+            <a routerLink="/cart" class="btn btn-secondary">
+              Back to Cart
+            </a>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="checkoutForm.invalid || !cartValidation().isValid || isProcessing()"
+            >
+              <span *ngIf="!isProcessing()">Place Order</span>
+              <span *ngIf="isProcessing()" class="loading-spinner">
+                <span class="spinner"></span>
+                Processing...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="order-summary">
+        <h2>Order Summary</h2>
+
+        <!-- Order Items -->
+        <div class="summary-items">
+          <div class="summary-item" *ngFor="let item of cartService.items()">
+            <img
+              [src]="item.product.imageUrl || '/assets/images/default-product.jpg'"
+              [alt]="item.product.name"
+              (error)="onImageError($event)"
+              class="item-image"
+            >
+            <div class="item-details">
+              <h4>{{ item.product.name }}</h4>
+              <p>Qty: {{ item.quantity }}</p>
+            </div>
+            <div class="item-price">
+              {{ formatCurrency(item.product.price * item.quantity) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div class="cost-breakdown">
+          <div class="cost-line">
+            <span>Subtotal:</span>
+            <span>{{ formatCurrency(cartSummary().subtotal) }}</span>
+          </div>
+
+          <div class="cost-line">
+            <span>Tax:</span>
+            <span>{{ formatCurrency(cartSummary().tax) }}</span>
+          </div>
+
+          <div class="cost-line">
+            <span>Shipping:</span>
+            <span>
+              {{ cartSummary().shipping === 0 ? 'FREE' : formatCurrency(cartSummary().shipping) }}
+            </span>
+          </div>
+
+          <div class="cost-line total">
+            <span>Total:</span>
+            <span>{{ formatCurrency(cartSummary().total) }}</span>
+          </div>
+        </div>
+
+        <!-- Shipping Info -->
+        <div class="shipping-info" *ngIf="cartSummary().shipping > 0">
+          <small>💡 Free shipping on orders over $50</small>
+        </div>
+
+        <!-- Security Notice -->
+        <!-- <div class="security-notice">
+          <p>🔒 Your payment information is secure and encrypted</p>
+        </div> -->
+      </div>
+    </div>
+  </div>
+</div>
