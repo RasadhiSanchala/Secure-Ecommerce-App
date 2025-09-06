@@ -36,7 +36,7 @@ export class CheckoutComponent implements OnInit {
       city: ['', [Validators.required]],
       state: ['', [Validators.required]],
       zipCode: ['', [Validators.required, Validators.pattern(/^\d{5}(-\d{4})?$/)]],
-      country: ['United States', [Validators.required]],
+      country: ['Sri Lanka', [Validators.required]],
 
       // Payment
       paymentMethod: ['credit_card', [Validators.required]],

@@ -1,121 +1,63 @@
-// backend/controllers/orderController.js - Updated with separate user and admin functions
+// backend/controllers/orderController.js
 const Order = require('../models/order');
+const Product = require('../models/product');
 
-// USER ORDER FUNCTIONS
-
-// Get current user's orders only
+// Get orders for authenticated user
 exports.getUserOrders = async (req, res) => {
   try {
+    // Only show orders for the authenticated user
     const orders = await Order.find({ user: req.user._id })
+        .sort({ createdAt: -1 })
         .populate('user', 'name email')
-        .populate('products.product', 'name description price')
-        .sort({ createdAt: -1 }); // Most recent first
+        .populate('products.product', 'name description price imageUrl');
 
-    res.json({
-      orders,
-      count: orders.length,
-      message: 'User orders retrieved successfully'
-    });
+    res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-// ADMIN ORDER FUNCTIONS
 
 // Get all orders - Admin only
 exports.getAllOrdersAdmin = async (req, res) => {
   try {
-    // Optional query parameters for filtering
-    const { status, userId, limit = 50, page = 1 } = req.query;
-
-    let query = {};
-
-    // Apply filters if provided
-    if (status) {
-      query.status = status;
-    }
-
-    if (userId) {
-      query.user = userId;
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const orders = await Order.find(query)
-        .populate('user', 'name email')
-        .populate('products.product', 'name description price')
+    const orders = await Order.find()
         .sort({ createdAt: -1 })
-        .limit(parseInt(limit))
-        .skip(skip);
+        .populate('user', 'name email')
+        .populate('products.product', 'name description price imageUrl');
 
-    // Get total count for pagination
-    const totalOrders = await Order.countDocuments(query);
-
-    // Calculate stats for admin dashboard
-    const stats = await Order.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$total' },
-          averageOrderValue: { $avg: '$total' },
-          statusCounts: {
-            $push: {
-              status: '$status',
-              count: 1
-            }
-          }
-        }
-      }
-    ]);
-
-    // Calculate status breakdown
-    const statusBreakdown = await Order.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalValue: { $sum: '$total' }
-        }
-      }
-    ]);
-
-    res.json({
-      orders,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(totalOrders / parseInt(limit)),
-        totalOrders,
-        limit: parseInt(limit)
-      },
-      stats: stats[0] || {},
-      statusBreakdown,
-      message: 'All orders retrieved successfully'
-    });
+    res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// SHARED FUNCTIONS (used by both user and admin endpoints)
+// Get orders - will route to appropriate function based on user role
+exports.getOrders = async (req, res) => {
+  try {
+    if (req.user.isAdmin) {
+      return exports.getAllOrdersAdmin(req, res);
+    } else {
+      return exports.getUserOrders(req, res);
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-// Get single order - with proper access control
+// Get single order with proper access control
 exports.getOrder = async (req, res) => {
   try {
-    let query = { _id: req.params.id };
-
-    // If user is not admin, ensure they can only see their own order
-    if (!req.user.isAdmin) {
-      query.user = req.user._id;
-    }
-
-    const order = await Order.findOne(query)
+    const order = await Order.findById(req.params.id)
         .populate('user', 'name email')
-        .populate('products.product', 'name description price');
+        .populate('products.product', 'name description price imageUrl');
 
     if (!order) {
-      return res.status(404).json({
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Allow access if user is admin OR if the order belongs to the authenticated user
+    if (!req.user.isAdmin && order.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
         message: req.user.isAdmin ? 'Order not found' : 'Order not found or access denied'
       });
     }
@@ -138,9 +80,9 @@ exports.createOrder = async (req, res) => {
       user: req.user._id // Override any user field with authenticated user
     };
 
-    // Validate that products exist and calculate total
-    const Product = require('../models/product');
+    // Validate that products exist, check stock, and calculate total
     let calculatedTotal = 0;
+    const stockUpdates = []; // Track stock updates to apply after successful order creation
 
     if (orderData.products && orderData.products.length > 0) {
       for (let item of orderData.products) {
@@ -150,11 +92,26 @@ exports.createOrder = async (req, res) => {
             message: `Product with ID ${item.product} not found`
           });
         }
+
         if (!product.available) {
           return res.status(400).json({
             message: `Product ${product.name} is not available`
           });
         }
+
+        // Check if enough stock is available
+        if (product.stock < item.quantity) {
+          return res.status(400).json({
+            message: `Insufficient stock for ${product.name}. Only ${product.stock} items available, but ${item.quantity} requested.`
+          });
+        }
+
+        // Store the stock update info
+        stockUpdates.push({
+          productId: product._id,
+          newStock: product.stock - item.quantity
+        });
+
         item.priceAtTime = product.price;
         calculatedTotal += product.price * (item.quantity || 1);
       }
@@ -163,17 +120,29 @@ exports.createOrder = async (req, res) => {
     // Use calculated total instead of user-provided total for security
     orderData.total = calculatedTotal;
 
+    // Create and save the order
     const order = new Order(orderData);
     const savedOrder = await order.save();
+
+    // Update product stock quantities
+    for (const update of stockUpdates) {
+      await Product.findByIdAndUpdate(
+          update.productId,
+          {
+            stock: update.newStock,
+            updatedAt: new Date()
+          }
+      );
+    }
 
     // Populate the saved order before returning
     const populatedOrder = await Order.findById(savedOrder._id)
         .populate('user', 'name email')
-        .populate('products.product', 'name description price');
+        .populate('products.product', 'name description price imageUrl');
 
     res.status(201).json({
       order: populatedOrder,
-      message: 'Order created successfully'
+      message: 'Order created successfully and stock updated'
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -189,16 +158,19 @@ exports.updateOrderStatus = async (req, res) => {
     const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+        message: `Invalid status. Valid statuses are: ${validStatuses.join(', ')}`
       });
     }
 
     const order = await Order.findByIdAndUpdate(
         req.params.id,
-        { status, updatedAt: new Date() },
+        {
+          status,
+          updatedAt: new Date()
+        },
         { new: true }
     ).populate('user', 'name email')
-        .populate('products.product', 'name description price');
+        .populate('products.product', 'name description price imageUrl');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -216,32 +188,39 @@ exports.updateOrderStatus = async (req, res) => {
 // Delete order - Admin only
 exports.deleteOrder = async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const order = await Order.findById(req.params.id)
+        .populate('products.product', 'name');
+
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
+
+    // If the order is being cancelled/deleted, optionally restore stock
+    // This is a business decision - you might want to restore stock only for certain statuses
+    if (order.status === 'pending' || order.status === 'processing') {
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(
+            item.product._id,
+            {
+              $inc: { stock: item.quantity }, // Increment stock back
+              updatedAt: new Date()
+            }
+        );
+      }
+    }
+
+    await Order.findByIdAndDelete(req.params.id);
 
     res.json({
       message: 'Order deleted successfully',
       deletedOrder: {
         id: order._id,
-        user: order.user,
-        total: order.total,
         status: order.status,
-        createdAt: order.createdAt
+        total: order.total,
+        productCount: order.products.length
       }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-};
-
-// DEPRECATED - Keep for backward compatibility
-exports.getOrders = async (req, res) => {
-  // This function now delegates to the appropriate function based on user role
-  if (req.user.isAdmin) {
-    return exports.getAllOrdersAdmin(req, res);
-  } else {
-    return exports.getUserOrders(req, res);
   }
 };
