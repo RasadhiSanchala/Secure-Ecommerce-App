@@ -100,6 +100,70 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+exports.changePassword = async (req, res) => {
+  try {
+    const requestingUserId = req.user._id.toString();
+    const targetUserId = req.params.id;
+    const { currentPassword, password: newPassword } = req.body;
+
+    // Users can only change their own password unless they're admin
+    if (!req.user.isAdmin && requestingUserId !== targetUserId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    }
+
+    // Find the user
+    const user = await User.findById(targetUserId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if this is an Auth0 user
+    if (user.auth0Id && user.password === 'auth0-user') {
+      return res.status(400).json({
+        message: 'Cannot change password for Auth0 users. Please use Auth0 to manage your password.',
+        useAuth0: true
+      });
+    }
+
+    // Verify current password (unless admin is changing another user's password)
+    if (requestingUserId === targetUserId) {
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password
+    user.password = hashedNewPassword;
+    user.updatedAt = new Date();
+    await user.save();
+
+    res.json({
+      message: 'Password changed successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Delete user
 exports.deleteUser = async (req, res) => {
   try {
