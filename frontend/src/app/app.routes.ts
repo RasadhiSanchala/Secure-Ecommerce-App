@@ -48,7 +48,7 @@ export const routes: Routes = [
   },
 
   // Cart routes
-  /*{
+  {
     path: 'cart',
     children: [
       {
@@ -60,7 +60,7 @@ export const routes: Routes = [
         loadComponent: () => import('./cart/checkout/checkout').then(c => c.CheckoutComponent)
       }
     ]
-  },*/
+  },
 
   // Auth callback route (for Auth0)
   { path: 'auth/callback', component: LoginComponent },

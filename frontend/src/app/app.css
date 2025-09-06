@@ -1,4 +1,4 @@
-/* src/app/app.css */
+/* frontend/src/app/app.css - Updated with cart navigation styles */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* Navigation Styles */
@@ -54,6 +54,64 @@
 
 .nav-item a:hover,
 .nav-item a.active {
+  color: #c97d60;
+  background-color: #fff8f0;
+}
+
+/* Cart Navigation Styles */
+.nav-item.cart-nav .cart-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.cart-icon {
+  font-size: 1.2rem;
+}
+
+.cart-text {
+  font-weight: 500;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -2px;
+  right: 2px;
+  background: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cart-link:hover {
+  color: #c97d60;
+  background-color: #fff8f0;
+}
+
+.cart-link.active {
   color: #c97d60;
   background-color: #fff8f0;
 }
@@ -323,6 +381,15 @@
 
   .user-name {
     max-width: 100px;
+  }
+
+  /* Mobile cart styles */
+  .cart-link {
+    justify-content: center;
+  }
+
+  .cart-badge {
+    right: 10px;
   }
 }
 

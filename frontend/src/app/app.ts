@@ -1,9 +1,10 @@
-// src/app/app.ts
+// frontend/src/app/app.ts - Updated with cart service
 import { Component, signal, OnInit } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './services/auth.service';
+import { CartService } from './services/cart.service';
 
 @Component({
   selector: 'app-root',
@@ -15,10 +16,13 @@ export class App implements OnInit {
   protected readonly title = signal('BakeHouse');
   protected readonly isMenuOpen = signal(false);
 
-  constructor(protected authService: AuthService) {}
+  constructor(
+    protected authService: AuthService,
+    protected cartService: CartService
+  ) {}
 
   ngOnInit(): void {
-    // Authentication is automatically initialized in the service
+    // Authentication and cart are automatically initialized in their services
   }
 
   toggleMenu(): void {
