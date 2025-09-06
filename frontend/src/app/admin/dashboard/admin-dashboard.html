@@ -3,52 +3,52 @@
   <div class="container">
     <!-- Header -->
     <div class="dashboard-header">
-      <h1>Admin Dashboard</h1>
-      <p>Welcome back! Here's what's happening in your store.</p>
-      <button class="refresh-btn" (click)="refreshData()">
-        <span>🔄</span> Refresh
-      </button>
+      <div class="header-content">
+        <h1>Admin Dashboard</h1>
+        <p>Welcome back! Here's what's happening in your store.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" (click)="refreshData()">
+          <span>🔄</span> Refresh Data
+        </button>
+      </div>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Stats Overview -->
     <div class="stats-grid">
+      <div class="stat-card orders">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+          <h3>{{ dashboardStats().totalOrders }}</h3>
+          <p>Total Orders</p>
+          <span class="stat-meta">{{ dashboardStats().pendingOrders }} pending</span>
+        </div>
+      </div>
+
       <div class="stat-card revenue">
         <div class="stat-icon">💰</div>
         <div class="stat-content">
           <h3>{{ formatCurrency(dashboardStats().totalRevenue) }}</h3>
           <p>Total Revenue</p>
-        </div>
-      </div>
-
-      <div class="stat-card orders">
-        <div class="stat-icon">📦</div>
-        <div class="stat-content">
-          <h3>{{ dashboardStats().totalOrders }}</h3>
-          <p>Total Orders</p>
+          <span class="stat-meta">Avg: {{ formatCurrency(dashboardStats().averageOrderValue) }}</span>
         </div>
       </div>
 
       <div class="stat-card products">
-        <div class="stat-icon">🛍️</div>
+        <div class="stat-icon">📦</div>
         <div class="stat-content">
-          <h3>{{ dashboardStats().activeProducts }}/{{ dashboardStats().totalProducts }}</h3>
-          <p>Active Products</p>
+          <h3>{{ dashboardStats().totalProducts }}</h3>
+          <p>Total Products</p>
+          <span class="stat-meta">{{ dashboardStats().activeProducts }} active</span>
         </div>
       </div>
 
-      <div class="stat-card pending">
-        <div class="stat-icon">⏳</div>
+      <div class="stat-card users">
+        <div class="stat-icon">👥</div>
         <div class="stat-content">
-          <h3>{{ dashboardStats().pendingOrders }}</h3>
-          <p>Pending Orders</p>
-        </div>
-      </div>
-
-      <div class="stat-card average">
-        <div class="stat-icon">📊</div>
-        <div class="stat-content">
-          <h3>{{ formatCurrency(dashboardStats().averageOrderValue) }}</h3>
-          <p>Avg Order Value</p>
+          <h3>{{ dashboardStats().totalUsers }}</h3>
+          <p>Total Users</p>
+          <span class="stat-meta">{{ dashboardStats().recentUsersCount }} this week</span>
         </div>
       </div>
     </div>
@@ -58,9 +58,9 @@
       <h2>Quick Actions</h2>
       <div class="actions-grid">
         <a routerLink="/admin/products" class="action-card">
-          <span class="action-icon">🛍️</span>
+          <span class="action-icon">📦</span>
           <h3>Manage Products</h3>
-          <p>Add, edit, or remove products from your catalog</p>
+          <p>Add, edit, or remove products</p>
         </a>
 
         <a routerLink="/admin/orders" class="action-card">
@@ -142,20 +142,27 @@
         </ng-template>
       </div>
 
-      <!-- Recent Activity -->
+      <!-- Recent Users -->
       <div class="dashboard-card recent-activity">
         <div class="card-header">
           <h2>Recent Users</h2>
           <a routerLink="/admin/users" class="view-all-link">View All</a>
         </div>
 
-        <div class="activity-list" *ngIf="recentUsers().length > 0; else noActivity">
+        <!-- Loading State -->
+        <div class="loading-state" *ngIf="isLoadingUsers()">
+          <div class="spinner"></div>
+          <p>Loading recent users...</p>
+        </div>
+
+        <!-- Users List -->
+        <div class="activity-list" *ngIf="!isLoadingUsers() && recentUsers().length > 0; else noActivity">
           <div class="activity-item" *ngFor="let user of recentUsers()">
-            <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+            <div class="user-avatar">{{ getUserInitials(user.name) }}</div>
             <div class="user-info">
               <h4>{{ user.name }}</h4>
               <p class="user-email">{{ user.email }}</p>
-              <p class="join-date">Joined {{ formatDate(user.createdAt) }}</p>
+              <p class="join-date">{{ getJoinDateText(user.createdAt) }}</p>
             </div>
             <div class="user-role">
               <span class="role-badge" [class.admin]="user.isAdmin">
@@ -166,7 +173,7 @@
         </div>
 
         <ng-template #noActivity>
-          <div class="empty-state">
+          <div class="empty-state" *ngIf="!isLoadingUsers()">
             <p>No recent user activity</p>
           </div>
         </ng-template>

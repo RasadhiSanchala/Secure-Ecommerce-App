@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OrderService } from '../../services/order.service';
 import { ProductService } from '../../services/product.service';
+import { UserService, User } from '../../services/user.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -16,16 +17,19 @@ import { AuthService } from '../../services/auth.service';
 export class AdminDashboardComponent implements OnInit {
   private readonly _recentOrders = signal<any[]>([]);
   private readonly _lowStockProducts = signal<any[]>([]);
-  private readonly _recentUsers = signal<any[]>([]);
+  private readonly _recentUsers = signal<User[]>([]);
+  private readonly _isLoadingUsers = signal<boolean>(false);
 
   readonly recentOrders = this._recentOrders.asReadonly();
   readonly lowStockProducts = this._lowStockProducts.asReadonly();
   readonly recentUsers = this._recentUsers.asReadonly();
+  readonly isLoadingUsers = this._isLoadingUsers.asReadonly();
 
   // Dashboard stats
   readonly dashboardStats = computed(() => {
     const orderStats = this.orderService.adminStats();
     const products = this.productService.products();
+    const userStats = this.userService.getUserStats();
 
     return {
       totalOrders: orderStats.totalOrders || 0,
@@ -33,13 +37,16 @@ export class AdminDashboardComponent implements OnInit {
       averageOrderValue: orderStats.averageOrderValue || 0,
       totalProducts: products.length,
       activeProducts: products.filter(p => p.available).length,
-      pendingOrders: orderStats.statusBreakdown?.find((s: any) => s._id === 'pending')?.count || 0
+      pendingOrders: orderStats.statusBreakdown?.find((s: any) => s._id === 'pending')?.count || 0,
+      totalUsers: userStats.total,
+      recentUsersCount: userStats.recentUsers
     };
   });
 
   constructor(
     private orderService: OrderService,
     private productService: ProductService,
+    private userService: UserService,
     private authService: AuthService
   ) {}
 
@@ -65,11 +72,25 @@ export class AdminDashboardComponent implements OnInit {
       error: (error) => console.error('Error loading products:', error)
     });
 
-    // Mock recent users for now (you can implement this when you have user management)
-    this._recentUsers.set([
-      { name: 'John Doe', email: 'john@example.com', createdAt: new Date(), isAdmin: false },
-      { name: 'Jane Smith', email: 'jane@example.com', createdAt: new Date(), isAdmin: false }
-    ]);
+    // Load recent users (real data instead of dummy data)
+    this.loadRecentUsers();
+  }
+
+  loadRecentUsers() {
+    this._isLoadingUsers.set(true);
+
+    this.userService.getRecentUsers(3).subscribe({
+      next: (users) => {
+        this._recentUsers.set(users);
+        this._isLoadingUsers.set(false);
+      },
+      error: (error) => {
+        console.error('Error loading recent users:', error);
+        this._isLoadingUsers.set(false);
+        // Fallback to empty array instead of dummy data
+        this._recentUsers.set([]);
+      }
+    });
   }
 
   formatCurrency(amount: number): string {
@@ -95,5 +116,31 @@ export class AdminDashboardComponent implements OnInit {
 
   refreshData() {
     this.loadDashboardData();
+  }
+
+  // Helper method for getting user initials for avatar
+  getUserInitials(name: string): string {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  // Helper method to format join date with relative time
+  getJoinDateText(date: string | Date): string {
+    const joinDate = new Date(date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - joinDate.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return 'Joined today';
+    } else if (diffDays === 1) {
+      return 'Joined yesterday';
+    } else if (diffDays < 7) {
+      return `Joined ${diffDays} days ago`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `Joined ${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    } else {
+      return `Joined ${this.formatDate(date)}`;
+    }
   }
 }
