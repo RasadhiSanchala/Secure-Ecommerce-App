@@ -3,6 +3,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService, Product } from '../services/product.service';
+import { CartService } from '../services/cart.service';
 
 @Component({
   selector: 'app-products',
@@ -16,7 +17,10 @@ export class ProductsComponent implements OnInit {
   selectedCategory = signal<string>('');
   searchTerm = signal<string>('');
 
-  constructor(public productService: ProductService) {}
+  constructor(
+    public productService: ProductService,
+    public cartService: CartService
+  ) {}
 
   ngOnInit() {
     this.loadProducts();
@@ -44,8 +48,37 @@ export class ProductsComponent implements OnInit {
   }
 
   addToCart(product: Product) {
-    if (!product.available) return;
-    alert(`Added ${product.name} to cart! (Cart functionality coming soon)`);
+    if (!product.available) {
+      alert('This product is currently unavailable');
+      return;
+    }
+
+    try {
+      this.cartService.addToCart(product, 1);
+
+      // Show success feedback
+      const button = event?.target as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = 'Added!';
+        button.style.backgroundColor = '#27ae60';
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.backgroundColor = '';
+        }, 1500);
+      }
+    } catch (error: any) {
+      alert(error.message);
+    }
+  }
+
+  isInCart(productId: string): boolean {
+    return this.cartService.isInCart(productId);
+  }
+
+  getCartQuantity(productId: string): number {
+    return this.cartService.getItemQuantity(productId);
   }
 
   onImageError(event: any) {
@@ -100,6 +133,18 @@ export class ProductsComponent implements OnInit {
         imageUrl: '',
         available: true,
         stock: 25,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        _id: '5',
+        name: 'Apple Cinnamon Danish',
+        description: 'Flaky pastry with sweet apple filling and cinnamon',
+        price: 5.75,
+        category: 'Pastries',
+        imageUrl: '',
+        available: true,
+        stock: 12,
         createdAt: new Date(),
         updatedAt: new Date()
       }
