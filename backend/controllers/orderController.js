@@ -2,66 +2,126 @@
 const Order = require('../models/order');
 const Product = require('../models/product');
 
-// Get orders for authenticated user
+// USER ORDER FUNCTIONS
+
+// Get current user's orders only - MUST RETURN UserOrdersResponse FORMAT
 exports.getUserOrders = async (req, res) => {
   try {
-    // Only show orders for the authenticated user
     const orders = await Order.find({ user: req.user._id })
-        .sort({ createdAt: -1 })
         .populate('user', 'name email')
-        .populate('products.product', 'name description price imageUrl');
+        .populate('products.product', 'name description price imageUrl')
+        .sort({ createdAt: -1 }); // Most recent first
 
-    res.json(orders);
+    // EXACT FORMAT your frontend expects for UserOrdersResponse
+    res.json({
+      orders,
+      count: orders.length,
+      message: 'User orders retrieved successfully'
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get all orders - Admin only
+// ADMIN ORDER FUNCTIONS
+
+// Get all orders - Admin only - MUST RETURN AdminOrdersResponse FORMAT
 exports.getAllOrdersAdmin = async (req, res) => {
   try {
-    const orders = await Order.find()
-        .sort({ createdAt: -1 })
-        .populate('user', 'name email')
-        .populate('products.product', 'name description price imageUrl');
+    // Optional query parameters for filtering
+    const { status, userId, limit = 50, page = 1 } = req.query;
 
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    let query = {};
 
-// Get orders - will route to appropriate function based on user role
-exports.getOrders = async (req, res) => {
-  try {
-    if (req.user.isAdmin) {
-      return exports.getAllOrdersAdmin(req, res);
-    } else {
-      return exports.getUserOrders(req, res);
+    // Apply filters if provided
+    if (status) {
+      query.status = status;
     }
+
+    if (userId) {
+      query.user = userId;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const orders = await Order.find(query)
+        .populate('user', 'name email')
+        .populate('products.product', 'name description price imageUrl')
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .skip(skip);
+
+    // Get total count for pagination
+    const totalOrders = await Order.countDocuments(query);
+
+    // Calculate stats for admin dashboard
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$total' },
+          averageOrderValue: { $avg: '$total' }
+        }
+      }
+    ]);
+
+    // Calculate status breakdown
+    const statusBreakdown = await Order.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalValue: { $sum: '$total' }
+        }
+      }
+    ]);
+
+    // EXACT FORMAT your frontend expects for AdminOrdersResponse
+    res.json({
+      orders,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalOrders / parseInt(limit)),
+        totalOrders,
+        limit: parseInt(limit)
+      },
+      stats: stats[0] || {
+        totalOrders: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0
+      },
+      statusBreakdown,
+      message: 'All orders retrieved successfully'
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get single order with proper access control
+// SHARED FUNCTIONS (used by both user and admin endpoints)
+
+// Get single order - with proper access control - MUST RETURN OrderResponse FORMAT
 exports.getOrder = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
+    let query = { _id: req.params.id };
+
+    // If user is not admin, ensure they can only see their own order
+    if (!req.user.isAdmin) {
+      query.user = req.user._id;
+    }
+
+    const order = await Order.findOne(query)
         .populate('user', 'name email')
         .populate('products.product', 'name description price imageUrl');
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    // Allow access if user is admin OR if the order belongs to the authenticated user
-    if (!req.user.isAdmin && order.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
+      return res.status(404).json({
         message: req.user.isAdmin ? 'Order not found' : 'Order not found or access denied'
       });
     }
 
+    // EXACT FORMAT your frontend expects for OrderResponse
     res.json({
       order,
       message: 'Order retrieved successfully'
@@ -71,7 +131,7 @@ exports.getOrder = async (req, res) => {
   }
 };
 
-// Create order - Automatically assign to the authenticated user
+// Create order - Automatically assign to the authenticated user + UPDATE STOCK
 exports.createOrder = async (req, res) => {
   try {
     // Ensure the order is created for the authenticated user
@@ -124,7 +184,7 @@ exports.createOrder = async (req, res) => {
     const order = new Order(orderData);
     const savedOrder = await order.save();
 
-    // Update product stock quantities
+    // Update product stock quantities AFTER successful order creation
     for (const update of stockUpdates) {
       await Product.findByIdAndUpdate(
           update.productId,
@@ -140,16 +200,17 @@ exports.createOrder = async (req, res) => {
         .populate('user', 'name email')
         .populate('products.product', 'name description price imageUrl');
 
+    // EXACT FORMAT your frontend expects for OrderResponse
     res.status(201).json({
       order: populatedOrder,
-      message: 'Order created successfully and stock updated'
+      message: 'Order created successfully'
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-// Update order status - Admin only
+// Update order status - Admin only - MUST RETURN OrderResponse FORMAT
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -176,6 +237,7 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // EXACT FORMAT your frontend expects for OrderResponse
     res.json({
       order,
       message: `Order status updated to ${status}`
@@ -222,5 +284,15 @@ exports.deleteOrder = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// DEPRECATED - Keep for backward compatibility
+exports.getOrders = async (req, res) => {
+  // This function now delegates to the appropriate function based on user role
+  if (req.user.isAdmin) {
+    return exports.getAllOrdersAdmin(req, res);
+  } else {
+    return exports.getUserOrders(req, res);
   }
 };
