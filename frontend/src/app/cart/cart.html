@@ -1,0 +1,133 @@
+<!-- frontend/src/app/cart/cart.html -->
+<div class="cart-container">
+  <div class="container">
+    <header class="page-header">
+      <h1>Shopping Cart</h1>
+      <p>Review your items before checkout</p>
+    </header>
+
+    <!-- Empty Cart -->
+    <div class="empty-cart" *ngIf="cartService.isEmpty()">
+      <div class="empty-state">
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added any items to your cart yet.</p>
+        <a routerLink="/products" class="btn btn-primary">
+          Start Shopping
+        </a>
+      </div>
+    </div>
+
+    <!-- Cart Content -->
+    <div class="cart-content" *ngIf="!cartService.isEmpty()">
+      <div class="cart-items">
+        <h2>Cart Items ({{ cartService.itemCount() }})</h2>
+
+        <div class="cart-item" *ngFor="let item of cartService.items()">
+          <div class="item-image">
+            <img
+              [src]="item.product.imageUrl || '/assets/images/default-product.jpg'"
+              [alt]="item.product.name"
+              (error)="onImageError($event)"
+            >
+          </div>
+
+          <div class="item-details">
+            <h3>{{ item.product.name }}</h3>
+            <p class="item-category">{{ item.product.category }}</p>
+            <p class="item-description">{{ item.product.description }}</p>
+            <p class="item-price">{{ formatCurrency(item.product.price) }} each</p>
+          </div>
+
+          <div class="item-controls">
+            <div class="quantity-controls">
+              <button
+                class="qty-btn"
+                (click)="updateQuantity(item.product._id, item.quantity - 1)"
+                [disabled]="item.quantity <= 1"
+              >
+                -
+              </button>
+              <span class="quantity">{{ item.quantity }}</span>
+              <button
+                class="qty-btn"
+                (click)="updateQuantity(item.product._id, item.quantity + 1)"
+                [disabled]="item.product.stock && item.quantity >= item.product.stock"
+              >
+                +
+              </button>
+            </div>
+
+            <div class="item-total">
+              {{ formatCurrency(item.product.price * item.quantity) }}
+            </div>
+
+            <button
+              class="remove-btn"
+              (click)="removeItem(item.product._id)"
+              title="Remove item"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cart Summary -->
+      <div class="cart-summary">
+        <h2>Order Summary</h2>
+
+        <div class="summary-line">
+          <span>Subtotal:</span>
+          <span>{{ formatCurrency(cartSummary().subtotal) }}</span>
+        </div>
+
+        <div class="summary-line">
+          <span>Tax (8%):</span>
+          <span>{{ formatCurrency(cartSummary().tax) }}</span>
+        </div>
+
+        <div class="summary-line">
+          <span>Shipping:</span>
+          <span>
+            {{ cartSummary().shipping === 0 ? 'FREE' : formatCurrency(cartSummary().shipping) }}
+          </span>
+        </div>
+
+        <div class="shipping-note" *ngIf="cartSummary().shipping > 0">
+          <small>Free shipping on orders over $50</small>
+        </div>
+
+        <div class="summary-line total">
+          <span>Total:</span>
+          <span>{{ formatCurrency(cartSummary().total) }}</span>
+        </div>
+
+        <div class="cart-actions">
+          <button class="btn btn-secondary btn-full" (click)="clearCart()">
+            Clear Cart
+          </button>
+
+          <a routerLink="/products" class="btn btn-outline btn-full">
+            Continue Shopping
+          </a>
+
+          <a
+            routerLink="/cart/checkout"
+            class="btn btn-primary btn-full"
+            *ngIf="authService.isAuthenticated()"
+          >
+            Proceed to Checkout
+          </a>
+
+          <a
+            routerLink="/login"
+            class="btn btn-primary btn-full"
+            *ngIf="!authService.isAuthenticated()"
+          >
+            Login to Checkout
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
