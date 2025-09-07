@@ -94,7 +94,8 @@ exports.getProfile = async (req, res) => {
                 isAdmin: req.user.isAdmin,
                 googleId: req.user.googleId || null,
                 auth0Id: req.user.auth0Id || null,
-                lastLogin: req.user.lastLogin
+                lastLogin: req.user.lastLogin,
+                emailVerified: req.user.emailVerified
             }
         });
     } catch (error) {

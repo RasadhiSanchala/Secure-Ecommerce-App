@@ -26,6 +26,7 @@ passport.use('google', new GoogleStrategy({
       if (!user.googleId) {
         user.googleId = profile.id;
         user.lastLogin = new Date();
+        user.emailVerified=true;
         await user.save();
       } else {
         // Just update last login
@@ -41,6 +42,7 @@ passport.use('google', new GoogleStrategy({
         googleId: profile.id,
         password: 'oauth-user', // Placeholder password for OAuth users
         isAdmin: false,
+        emailVerified: true,
         lastLogin: new Date()
       });
       await user.save();
@@ -57,7 +59,7 @@ passport.use('auth0', new Auth0Strategy({
   domain: process.env.AUTH0_DOMAIN,
   clientID: process.env.AUTH0_CLIENT_ID,
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
-  callbackURL: process.env.AUTH0_CALLBACK_URL || 'https://localhost:3005/auth/auth0/callback'
+  callbackURL: '/auth/auth0/callback'
 }, async (accessToken, refreshToken, extraParams, profile, done) => {
   try {
     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -75,6 +77,7 @@ passport.use('auth0', new Auth0Strategy({
       if (!user.auth0Id) {
         user.auth0Id = profile.id;
         user.lastLogin = new Date();
+        user.emailVerified = true;
         await user.save();
       } else {
         // Just update last login
@@ -90,7 +93,8 @@ passport.use('auth0', new Auth0Strategy({
         auth0Id: profile.id,
         password: 'oauth-user', // Placeholder password for OAuth users
         isAdmin: false,
-        lastLogin: new Date()
+        lastLogin: new Date(),
+        emailVerified: true
       });
       await user.save();
       return done(null, user);

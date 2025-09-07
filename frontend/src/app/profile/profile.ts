@@ -43,31 +43,32 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUserProfile() {
-    const user = this.authService.currentUser();
-    if (user) {
-      this.profileForm.patchValue({
-        name: user.name,
-        email: user.email
-      });
-    } else {
-      // If no user in memory, try to verify token and get fresh data
-      this.authService.verifyToken().subscribe({
-        next: (response) => {
-          if (response.user) {
+    // Always refresh user data from server to get latest emailVerified status
+    this.authService.verifyToken().subscribe({
+      next: (response) => {
+        if (response.user) {
+          this.profileForm.patchValue({
+            name: response.user.name,
+            email: response.user.email
+          });
+        }
+      },
+      error: (error) => {
+        console.error('Error loading profile:', error);
+        if (error.status === 401) {
+          this.logout();
+        } else {
+          // Fallback to cached user data if server request fails
+          const user = this.authService.currentUser();
+          if (user) {
             this.profileForm.patchValue({
-              name: response.user.name,
-              email: response.user.email
+              name: user.name,
+              email: user.email
             });
           }
-        },
-        error: (error) => {
-          console.error('Error loading profile:', error);
-          if (error.status === 401) {
-            this.logout();
-          }
         }
-      });
-    }
+      }
+    });
   }
 
   passwordMatchValidator(control: any): {[key: string]: boolean} | null {
