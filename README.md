@@ -6,19 +6,19 @@ A full-stack e-commerce web application for a bakery shop, built with Angular fr
 
 ### Core Features
 
-- ✅ Product catalog with detailed views
-- ✅ Shopping cart functionality
-- ✅ User authentication (Login/Register)
-- ✅ Responsive design
-- ✅ HTTPS development environment
+-  Product catalog with detailed views
+-  Shopping cart functionality
+-  User authentication (Login/Register)
+-  Responsive design
+-  HTTPS development environment
 
 ### Bonus Features
 
-- ✅ OAuth integration (Google & Auth0) - **+5 marks**
-- ✅ Angular Signals for state management - **+5 marks**
-- ✅ JWT-based authentication
-- ✅ Session management
-- ✅ Email verification
+-  OAuth integration (Google & Auth0)
+-  Angular Signals for state management 
+-  JWT-based authentication
+-  Session management
+-  Email verification
 
 ## 📋 Prerequisites
 
@@ -35,8 +35,8 @@ Before running this application, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
-cd <project-directory>
+git clone https://github.com/RasadhiSanchala/Secure-Ecommerce-App.git
+cd Secure-Ecommerce-App
 ```
 
 ### 2. Generate SSL Certificates
