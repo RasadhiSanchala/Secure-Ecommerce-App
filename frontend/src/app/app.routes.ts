@@ -13,20 +13,20 @@ import { AuthFailureComponent } from './auth/failure/auth-failure';
 export const routes: Routes = [
   // Main routes
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  { path: 'home', component: Home },
-  { path: 'products', component: ProductsComponent },
-  { path: 'about', component: AboutComponent },
+  { path: 'home', component: Home, title: 'BakeHouse' },
+  { path: 'products', component: ProductsComponent, title: 'Products' },
+  { path: 'about', component: AboutComponent, title: 'About Us' },
 
   // Auth routes
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  {path: 'auth/success', component: AuthSuccessComponent, title: 'Authentication Success'},
-  {path: 'auth/failure', component: AuthFailureComponent, title: 'Authentication Failed'},
-  {path: 'auth/callback', component: AuthSuccessComponent, title: 'Processing Authentication'},
+  { path: 'login', component: LoginComponent, title: 'Login Page' },
+  { path: 'register', component: RegisterComponent, title: 'Registration Page' },
+  { path: 'auth/success', component: AuthSuccessComponent, title: 'Authentication Success' },
+  { path: 'auth/failure', component: AuthFailureComponent, title: 'Authentication Failed' },
+  { path: 'auth/callback', component: AuthSuccessComponent, title: 'Processing Authentication' },
 
   // User routes
-  { path: 'profile', component: ProfileComponent },
-  { path: 'orders', component: OrdersComponent },
+  { path: 'profile', component: ProfileComponent, title: 'Profile' },
+  { path: 'orders', component: OrdersComponent, title: 'Orders' },
 
   // Admin routes
   {
@@ -35,19 +35,23 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        loadComponent: () => import('./admin/dashboard/admin-dashboard').then(c => c.AdminDashboardComponent)
+        loadComponent: () => import('./admin/dashboard/admin-dashboard').then(c => c.AdminDashboardComponent),
+        title: 'Admin Dashboard',
       },
       {
         path: 'products',
-        loadComponent: () => import('./admin/products/admin-products').then(c => c.AdminProductsComponent)
+        loadComponent: () => import('./admin/products/admin-products').then(c => c.AdminProductsComponent),
+        title: 'Manage Products',
       },
       {
         path: 'orders',
-        loadComponent: () => import('./admin/orders/admin-orders').then(c => c.AdminOrdersComponent)
+        loadComponent: () => import('./admin/orders/admin-orders').then(c => c.AdminOrdersComponent),
+        title: 'Manage Orders',
       },
       {
         path: 'users',
-        loadComponent: () => import('./admin/users/admin-users').then(c => c.AdminUsersComponent)
+        loadComponent: () => import('./admin/users/admin-users').then(c => c.AdminUsersComponent),
+        title: 'Manage Users',
       }
     ]
   },
@@ -58,17 +62,16 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        loadComponent: () => import('./cart/cart').then(c => c.CartComponent)
+        loadComponent: () => import('./cart/cart').then(c => c.CartComponent),
+        title: 'Cart',
       },
       {
         path: 'checkout',
-        loadComponent: () => import('./cart/checkout/checkout').then(c => c.CheckoutComponent)
+        loadComponent: () => import('./cart/checkout/checkout').then(c => c.CheckoutComponent),
+        title: 'Checkout',
       }
     ]
   },
-
-  // Auth callback route (for Auth0)
-  { path: 'auth/callback', component: LoginComponent },
 
   // Wildcard route - must be last
   { path: '**', redirectTo: 'home' }
