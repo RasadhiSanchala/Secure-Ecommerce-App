@@ -1,9 +1,9 @@
-// src/app/services/auth.service.ts
+// frontend/src/app/services/auth.service.ts
 import { Injectable, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, BehaviorSubject, catchError, of, tap } from 'rxjs';
+import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface User {
@@ -13,7 +13,9 @@ export interface User {
   isAdmin: boolean;
   lastLogin?: Date | string;
   emailVerified?: boolean;
-  auth0Id?: string;
+  oauthProvider?: 'google' | 'auth0' | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface AuthResponse {
@@ -40,6 +42,7 @@ export class AuthService {
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly isAdmin = computed(() => this._currentUser()?.isAdmin ?? false);
+  readonly isOAuthUser = computed(() => !!this._currentUser()?.oauthProvider);
 
   constructor(
     private http: HttpClient,
@@ -51,6 +54,7 @@ export class AuthService {
     // Only initialize auth in browser
     if (this.isBrowser) {
       this.initializeAuth();
+      this.handleAuthCallback();
     }
   }
 
@@ -69,10 +73,38 @@ export class AuthService {
     }
   }
 
+  private handleAuthCallback(): void {
+    if (!this.isBrowser) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const provider = urlParams.get('provider');
+
+    if (token && provider) {
+      this.setToken(token);
+
+      // Get user profile with the new token
+      this.verifyToken().subscribe({
+        next: () => {
+          // Clean URL and redirect to success page
+          window.history.replaceState({}, document.title, window.location.pathname);
+          this.router.navigate(['/auth/success'], {
+            queryParams: { provider }
+          });
+        },
+        error: () => {
+          this.clearAuthData();
+          this.router.navigate(['/auth/failure']);
+        }
+      });
+    }
+  }
+
+  // Traditional email/password login
   login(email: string, password: string): Observable<AuthResponse> {
     this._isLoading.set(true);
 
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/users/login`, {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, {
       email,
       password
     }).pipe(
@@ -86,6 +118,7 @@ export class AuthService {
     );
   }
 
+  // Traditional registration
   register(userData: {
     name: string;
     email: string;
@@ -94,7 +127,7 @@ export class AuthService {
   }): Observable<AuthResponse> {
     this._isLoading.set(true);
 
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/users/register`, userData).pipe(
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData).pipe(
       tap(response => {
         this.handleAuthSuccess(response);
       }),
@@ -105,8 +138,24 @@ export class AuthService {
     );
   }
 
+  // Google OAuth login
+  loginWithGoogle(): void {
+    if (this.isBrowser) {
+      window.location.href = `${environment.apiUrl}/auth/google`;
+    }
+  }
+
+  // Auth0 OAuth login
+  loginWithAuth0(): void {
+    if (this.isBrowser) {
+      window.location.href = `${environment.apiUrl}/auth/auth0`;
+    }
+  }
+
+  // Logout
   logout(): void {
     const token = this.getToken();
+    const user = this._currentUser();
 
     // Call logout endpoint
     if (token) {
@@ -117,9 +166,18 @@ export class AuthService {
 
     // Clear local storage and state
     this.clearAuthData();
-    this.router.navigate(['/home']);
+
+    // Redirect based on OAuth provider
+    if (user?.oauthProvider === 'google') {
+      window.location.href = `${environment.apiUrl}/auth/google/logout`;
+    } else if (user?.oauthProvider === 'auth0') {
+      window.location.href = `${environment.apiUrl}/auth/auth0/logout`;
+    } else {
+      this.router.navigate(['/home']);
+    }
   }
 
+  // Refresh JWT token
   refreshToken(): Observable<AuthResponse> {
     const token = this.getToken();
     if (!token) {
@@ -141,6 +199,7 @@ export class AuthService {
     );
   }
 
+  // Verify token and get user profile
   verifyToken(): Observable<{ user: User }> {
     const token = this.getToken();
     if (!token) {
@@ -154,6 +213,7 @@ export class AuthService {
         if (response.user) {
           this._currentUser.set(response.user);
           this.setStoredUser(response.user);
+          this._isAuthenticated.set(true);
         }
       }),
       catchError(error => {
@@ -165,6 +225,7 @@ export class AuthService {
     );
   }
 
+  // Update user profile
   updateProfile(userData: Partial<User>): Observable<User> {
     const token = this.getToken();
     const currentUser = this._currentUser();
@@ -183,12 +244,17 @@ export class AuthService {
     );
   }
 
+  // Change password (only for non-OAuth users)
   changePassword(currentPassword: string, newPassword: string): Observable<any> {
     const token = this.getToken();
     const currentUser = this._currentUser();
 
     if (!token || !currentUser) {
       throw new Error('Authentication required');
+    }
+
+    if (currentUser.oauthProvider) {
+      throw new Error('Cannot change password for OAuth users');
     }
 
     return this.http.put(`${environment.apiUrl}/users/${currentUser.id}/password`, {
@@ -199,6 +265,7 @@ export class AuthService {
     });
   }
 
+  // Delete account
   deleteAccount(): Observable<any> {
     const token = this.getToken();
     const currentUser = this._currentUser();
@@ -217,17 +284,13 @@ export class AuthService {
     );
   }
 
-  loginWithAuth0(): void {
-    if (this.isBrowser) {
-      window.location.href = `${environment.apiUrl}/auth/auth0`;
-    }
-  }
-
+  // Get authorization headers for API calls
   getAuthHeaders(): { [header: string]: string } {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  // Private helper methods
   private handleAuthSuccess(response: AuthResponse): void {
     this.setToken(response.token);
     this.setStoredUser(response.user);

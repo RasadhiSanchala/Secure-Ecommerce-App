@@ -12,10 +12,22 @@ export interface User {
   email: string;
   isAdmin: boolean;
   emailVerified: boolean;
+  googleId?: string;
   auth0Id?: string;
+  oauthProvider?: 'google' | 'auth0' | null;
   createdAt: Date | string;
   updatedAt: Date | string;
   lastLogin?: Date | string;
+}
+
+export interface UsersResponse {
+  users: User[];
+  pagination: {
+    current: number;
+    total: number;
+    count: number;
+    totalUsers: number;
+  };
 }
 
 @Injectable({
@@ -24,10 +36,12 @@ export interface User {
 export class UserService {
   private readonly _users = signal<User[]>([]);
   private readonly _isLoading = signal<boolean>(false);
+  private readonly _pagination = signal<any>({});
 
   // Public readonly signals
   readonly users = this._users.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
+  readonly pagination = this._pagination.asReadonly();
 
   constructor(
     private http: HttpClient,
@@ -35,23 +49,26 @@ export class UserService {
   ) {}
 
   /**
-   * Get all users (Admin only)
+   * Get all users (Admin only) - Updated for new response format
    */
   getAllUsers(): Observable<User[]> {
     this._isLoading.set(true);
 
     return new Observable<User[]>(observer => {
-      this.http.get<User[]>(`${environment.apiUrl}/users`, {
+      this.http.get<UsersResponse>(`${environment.apiUrl}/users`, {
         headers: this.authService.getAuthHeaders()
       }).subscribe({
-        next: (users) => {
-          // Map _id to id for consistency
-          const mappedUsers = users.map(user => ({
+        next: (response) => {
+          // Map _id to id for consistency and handle new response format
+          const mappedUsers = response.users.map(user => ({
             ...user,
             id: user._id || user.id
           }));
+
           this._users.set(mappedUsers);
+          this._pagination.set(response.pagination);
           this._isLoading.set(false);
+
           observer.next(mappedUsers);
           observer.complete();
         },
@@ -148,7 +165,7 @@ export class UserService {
     total: number;
     admins: number;
     verified: number;
-    auth0Users: number;
+    oauthUsers: number;
     recentUsers: number;
   } {
     const users = this._users();
@@ -159,7 +176,7 @@ export class UserService {
       total: users.length,
       admins: users.filter(u => u.isAdmin).length,
       verified: users.filter(u => u.emailVerified).length,
-      auth0Users: users.filter(u => u.auth0Id).length,
+      oauthUsers: users.filter(u => u.oauthProvider).length,
       recentUsers: users.filter(u => new Date(u.createdAt) > oneWeekAgo).length
     };
   }
@@ -176,5 +193,6 @@ export class UserService {
    */
   clearCache(): void {
     this._users.set([]);
+    this._pagination.set({});
   }
 }
