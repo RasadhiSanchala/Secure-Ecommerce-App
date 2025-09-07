@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { AuthFailure } from './auth-failure';
+import { AuthFailureComponent as AuthFailure } from './auth-failure';
 
 describe('AuthFailure', () => {
   let component: AuthFailure;

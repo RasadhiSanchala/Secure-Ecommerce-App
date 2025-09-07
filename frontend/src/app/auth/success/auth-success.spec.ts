@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { AuthSuccess } from './auth-success';
+import { AuthSuccessComponent as AuthSuccess } from './auth-success';
 
 describe('AuthSuccess', () => {
   let component: AuthSuccess;
