@@ -7,6 +7,8 @@ import { LoginComponent } from './auth/login/login';
 import { RegisterComponent } from './auth/register/register';
 import { ProfileComponent } from './profile/profile';
 import { OrdersComponent } from './orders/orders';
+import { AuthSuccessComponent } from './auth/success/auth-success';
+import { AuthFailureComponent } from './auth/failure/auth-failure';
 
 export const routes: Routes = [
   // Main routes
@@ -18,6 +20,9 @@ export const routes: Routes = [
   // Auth routes
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  {path: 'auth/success', component: AuthSuccessComponent, title: 'Authentication Success'},
+  {path: 'auth/failure', component: AuthFailureComponent, title: 'Authentication Failed'},
+  {path: 'auth/callback', component: AuthSuccessComponent, title: 'Processing Authentication'},
 
   // User routes
   { path: 'profile', component: ProfileComponent },
