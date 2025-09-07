@@ -1,4 +1,4 @@
-// src/app/auth/login/login.ts
+// frontend/src/app/auth/login/login.ts
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -45,14 +45,14 @@ export class LoginComponent {
         next: (response) => {
           this.successMessage.set('Login successful! Redirecting...');
           setTimeout(() => {
-            this.router.navigate(['/home']);
+            this.router.navigate(['/dashboard']);
           }, 1500);
         },
         error: (error) => {
           console.error('Login error:', error);
 
           if (error.error?.useAuth0) {
-            this.errorMessage.set('This account uses Auth0. Please use the "Continue with Auth0" button.');
+            this.errorMessage.set('This account uses OAuth. Please use the "Continue with Auth0" or "Continue with Google" button.');
           } else {
             this.errorMessage.set(
               error.error?.message || 'Login failed. Please check your credentials and try again.'
@@ -63,6 +63,11 @@ export class LoginComponent {
     } else {
       this.markFormGroupTouched();
     }
+  }
+
+  // OAuth login methods
+  loginWithGoogle() {
+    this.authService.loginWithGoogle();
   }
 
   loginWithAuth0() {

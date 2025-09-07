@@ -122,6 +122,10 @@ export class RegisterComponent {
     }
   }
 
+  loginWithGoogle() {
+    this.authService.loginWithGoogle();
+  }
+
   registerWithAuth0() {
     this.authService.loginWithAuth0();
   }
