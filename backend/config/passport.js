@@ -1,35 +1,84 @@
 // backend/config/passport.js
 const passport = require('passport');
-const OpenIDConnectStrategy = require('passport-openidconnect').Strategy;
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const Auth0Strategy = require('passport-auth0');
 const User = require('../models/user');
 
-// Auth0 OpenID Connect Strategy
-passport.use(new OpenIDConnectStrategy({
-  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-  authorizationURL: `https://${process.env.AUTH0_DOMAIN}/authorize`,
-  tokenURL: `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
-  userInfoURL: `https://${process.env.AUTH0_DOMAIN}/userinfo`,
+// Google OAuth Strategy
+passport.use('google', new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: '/auth/google/callback'
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+    const name = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
+
+    if (!email) {
+      return done(new Error('No email provided by Google'), null);
+    }
+
+    // Check if user already exists with this email
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User exists, update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = profile.id;
+        user.lastLogin = new Date();
+        await user.save();
+      } else {
+        // Just update last login
+        user.lastLogin = new Date();
+        await user.save();
+      }
+      return done(null, user);
+    } else {
+      // Create new user with Google info
+      user = new User({
+        name: name || 'Google User',
+        email,
+        googleId: profile.id,
+        password: 'oauth-user', // Placeholder password for OAuth users
+        isAdmin: false,
+        lastLogin: new Date()
+      });
+      await user.save();
+      return done(null, user);
+    }
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    return done(error, null);
+  }
+}));
+
+// Auth0 Strategy
+passport.use('auth0', new Auth0Strategy({
+  domain: process.env.AUTH0_DOMAIN,
   clientID: process.env.AUTH0_CLIENT_ID,
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
-  callbackURL: process.env.AUTH0_CALLBACK_URL || 'http://localhost:3000/auth/auth0/callback',
-  scope: 'openid profile email'
-}, async (issuer, sub, profile, accessToken, refreshToken, done) => {
+  callbackURL: process.env.AUTH0_CALLBACK_URL || 'https://localhost:3005/auth/auth0/callback'
+}, async (accessToken, refreshToken, extraParams, profile, done) => {
   try {
-    // Extract user information from Auth0 profile
     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-    const name = profile.displayName || profile.name || 'Unknown User';
-    
+    const name = profile.displayName || profile.nickname || 'Auth0 User';
+
     if (!email) {
       return done(new Error('No email provided by Auth0'), null);
     }
 
-    // Check if user already exists
+    // Check if user already exists with this email
     let user = await User.findOne({ email });
-    
+
     if (user) {
-      // User exists, update Auth0 info if needed
+      // User exists, update Auth0 ID if not set
       if (!user.auth0Id) {
-        user.auth0Id = sub;
+        user.auth0Id = profile.id;
+        user.lastLogin = new Date();
+        await user.save();
+      } else {
+        // Just update last login
+        user.lastLogin = new Date();
         await user.save();
       }
       return done(null, user);
@@ -38,24 +87,26 @@ passport.use(new OpenIDConnectStrategy({
       user = new User({
         name,
         email,
-        auth0Id: sub,
-        password: 'auth0-user', // Placeholder password for Auth0 users
-        isAdmin: false
+        auth0Id: profile.id,
+        password: 'oauth-user', // Placeholder password for OAuth users
+        isAdmin: false,
+        lastLogin: new Date()
       });
       await user.save();
       return done(null, user);
     }
   } catch (error) {
+    console.error('Auth0 OAuth error:', error);
     return done(error, null);
   }
 }));
 
-// Serialize user for session
+// Serialize user for session (though we're using JWT)
 passport.serializeUser((user, done) => {
   done(null, user._id);
 });
 
-// Deserialize user from session
+// Deserialize user from session (though we're using JWT)
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id).select('-password');

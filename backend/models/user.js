@@ -5,60 +5,89 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 100
   },
-  email: { 
-    type: String, 
-    required: true, 
+  email: {
+    type: String,
+    required: true,
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    maxlength: 255
   },
-  password: { 
-    type: String, 
-    required: true 
-  },
-  isAdmin: { 
-    type: Boolean, 
-    default: false 
-  },
-  // Auth0 specific fields
-  auth0Id: {
+  password: {
     type: String,
-    sparse: true, // Allows null values but ensures uniqueness when present
-    unique: true
+    required: true,
+    minlength: 6
   },
-  // Additional fields for better user management
-  emailVerified: {
+  isAdmin: {
     type: Boolean,
     default: false
   },
-  profilePicture: {
+  // OAuth provider IDs
+  googleId: {
     type: String,
-    default: ''
+    sparse: true,
+    unique: true
   },
+  auth0Id: {
+    type: String,
+    sparse: true,
+    unique: true
+  },
+  // Timestamps
   lastLogin: {
     type: Date,
     default: null
   },
-  createdAt: {
+  lastLogout: {
     type: Date,
-    default: Date.now
+    default: null
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  emailVerified: {
+    type: Boolean,
+    default: false
   }
+}, {
+  timestamps: true // This adds createdAt and updatedAt
 });
 
-// Update the updatedAt field before saving
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Create indexes for better performance
+// Index for better query performance
 userSchema.index({ email: 1 });
+userSchema.index({ googleId: 1 });
 userSchema.index({ auth0Id: 1 });
+
+// Virtual to check if user is OAuth user
+userSchema.virtual('isOAuthUser').get(function() {
+  return !!(this.googleId || this.auth0Id);
+});
+
+// Virtual to get OAuth provider
+userSchema.virtual('oauthProvider').get(function() {
+  if (this.googleId) return 'google';
+  if (this.auth0Id) return 'auth0';
+  return null;
+});
+
+// Method to check if user can change password
+userSchema.methods.canChangePassword = function() {
+  return !this.isOAuthUser || this.password !== 'oauth-user';
+};
+
+// Method to get safe user data (without sensitive info)
+userSchema.methods.toSafeObject = function() {
+  return {
+    id: this._id,
+    name: this.name,
+    email: this.email,
+    isAdmin: this.isAdmin,
+    emailVerified: this.emailVerified,
+    lastLogin: this.lastLogin,
+    oauthProvider: this.oauthProvider,
+    createdAt: this.createdAt,
+    updatedAt: this.updatedAt
+  };
+};
 
 module.exports = mongoose.model('User', userSchema);

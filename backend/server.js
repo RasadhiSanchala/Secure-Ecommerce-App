@@ -7,6 +7,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const session = require('express-session');
 const connectDB = require('./config/db');
+const passport = require('./config/passport');
 
 const path=require('path');
 const https = require('https');
@@ -21,8 +22,12 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'https://localhost:4200',
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Initialize Passport
+app.use(passport.initialize());
 
 // Session middleware
 app.use(session({
