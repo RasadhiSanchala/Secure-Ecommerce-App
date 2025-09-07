@@ -12,13 +12,25 @@ export interface AdminUser extends User {
   updatedAt: Date | string;
   lastLogin?: Date | string;
   emailVerified: boolean;
+  googleId?: string;
   auth0Id?: string;
+  oauthProvider?: 'google' | 'auth0' | null;
+}
+
+export interface UsersResponse {
+  users: AdminUser[];
+  pagination: {
+    current: number;
+    total: number;
+    count: number;
+    totalUsers: number;
+  };
 }
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule], // FormsModule is properly imported
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './admin-users.html',
   styleUrl: './admin-users.css'
 })
@@ -30,16 +42,17 @@ export class AdminUsersComponent implements OnInit {
   isLoading = signal<boolean>(false);
   errorMessage = signal<string>('');
   successMessage = signal<string>('');
+  pagination = signal<any>({});
 
-  // Computed stats to avoid template filtering
+  // Computed stats using the new response format
   totalUsers = computed(() => this.users().length);
   adminUsers = computed(() => this.users().filter(user => user.isAdmin).length);
   verifiedUsers = computed(() => this.users().filter(user => user.emailVerified).length);
-  auth0Users = computed(() => this.users().filter(user => user.auth0Id).length);
+  oauthUsers = computed(() => this.users().filter(user => user.oauthProvider).length);
 
   constructor(
     private http: HttpClient,
-    public authService: AuthService  // Changed to public so template can access it
+    public authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -50,11 +63,12 @@ export class AdminUsersComponent implements OnInit {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    this.http.get<AdminUser[]>(`${environment.apiUrl}/users`, {
+    this.http.get<UsersResponse>(`${environment.apiUrl}/users`, {
       headers: this.authService.getAuthHeaders()
     }).subscribe({
-      next: (users) => {
-        this.users.set(users);
+      next: (response) => {
+        this.users.set(response.users);
+        this.pagination.set(response.pagination);
         this.filterUsers();
         this.isLoading.set(false);
       },
@@ -88,6 +102,10 @@ export class AdminUsersComponent implements OnInit {
         filtered = filtered.filter(user => user.emailVerified);
       } else if (this.selectedRole() === 'unverified') {
         filtered = filtered.filter(user => !user.emailVerified);
+      } else if (this.selectedRole() === 'oauth') {
+        filtered = filtered.filter(user => user.oauthProvider);
+      } else if (this.selectedRole() === 'local') {
+        filtered = filtered.filter(user => !user.oauthProvider);
       }
     }
 
@@ -114,29 +132,33 @@ export class AdminUsersComponent implements OnInit {
 
   toggleEmailVerification(user: AdminUser) {
     const newStatus = !user.emailVerified;
+    const confirmMessage = `Mark "${user.name}" as ${newStatus ? 'verified' : 'unverified'}?`;
 
-    this.updateUser(user.id, { emailVerified: newStatus }).subscribe({
-      next: (updatedUser) => {
-        this.showSuccess(`User email ${newStatus ? 'verified' : 'unverified'} successfully!`);
-        this.updateUserInList(updatedUser);
-      },
-      error: (error) => {
-        console.error('Error updating email verification:', error);
-        this.showError('Failed to update email verification');
-      }
-    });
+    if (confirm(confirmMessage)) {
+      this.updateUser(user.id, { emailVerified: newStatus }).subscribe({
+        next: (updatedUser) => {
+          this.showSuccess(`User email marked as ${newStatus ? 'verified' : 'unverified'} successfully!`);
+          this.updateUserInList(updatedUser);
+        },
+        error: (error) => {
+          console.error('Error updating email verification:', error);
+          this.showError('Failed to update email verification');
+        }
+      });
+    }
   }
 
   deleteUser(user: AdminUser) {
     if (user.id === this.authService.currentUser()?.id) {
-      alert('You cannot delete your own account from this interface.');
+      alert('You cannot delete your own account!');
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete "${user.name}"?\n\nEmail: ${user.email}\n\nThis action cannot be undone and will remove all user data including orders.`;
+    const confirmMessage = `Are you sure you want to delete user "${user.name}"? This action cannot be undone.`;
+    const firstConfirmation = confirm(confirmMessage);
 
-    if (confirm(confirmMessage)) {
-      const secondConfirmation = confirm('This will permanently delete all user data. Are you absolutely sure?');
+    if (firstConfirmation) {
+      const secondConfirmation = confirm('⚠️ WARNING: This will permanently delete the user and all their data. Are you absolutely sure?');
 
       if (secondConfirmation) {
         this.http.delete(`${environment.apiUrl}/users/${user.id}`, {
@@ -174,6 +196,22 @@ export class AdminUsersComponent implements OnInit {
     }
   }
 
+  private handleError(error: any, defaultMessage: string) {
+    const message = error.error?.message || defaultMessage;
+    this.errorMessage.set(message);
+    setTimeout(() => this.errorMessage.set(''), 5000);
+  }
+
+  private showSuccess(message: string) {
+    this.successMessage.set(message);
+    setTimeout(() => this.successMessage.set(''), 3000);
+  }
+
+  private showError(message: string) {
+    this.errorMessage.set(message);
+    setTimeout(() => this.errorMessage.set(''), 5000);
+  }
+
   formatDate(date: string | Date): string {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -188,6 +226,18 @@ export class AdminUsersComponent implements OnInit {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
+  getOauthProviderDisplay(user: AdminUser): string {
+    if (user.oauthProvider === 'google') return '🌐 Google';
+    if (user.oauthProvider === 'auth0') return '🔐 Auth0';
+    return '🔑 Local';
+  }
+
+  getOauthProviderClass(user: AdminUser): string {
+    if (user.oauthProvider === 'google') return 'google';
+    if (user.oauthProvider === 'auth0') return 'auth0';
+    return 'local';
+  }
+
   exportUsers() {
     const users = this.filteredUsers();
     if (users.length === 0) {
@@ -195,7 +245,7 @@ export class AdminUsersComponent implements OnInit {
       return;
     }
 
-    const headers = ['ID', 'Name', 'Email', 'Role', 'Email Verified', 'Auth0 User', 'Created Date', 'Last Login'];
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Email Verified', 'OAuth Provider', 'Created Date', 'Last Login'];
     const csvContent = [
       headers.join(','),
       ...users.map(user => [
@@ -204,7 +254,7 @@ export class AdminUsersComponent implements OnInit {
         user.email,
         user.isAdmin ? 'Admin' : 'User',
         user.emailVerified ? 'Yes' : 'No',
-        user.auth0Id ? 'Yes' : 'No',
+        user.oauthProvider || 'Local',
         this.formatDate(user.createdAt),
         user.lastLogin ? this.formatDate(user.lastLogin) : 'Never'
       ].join(','))
@@ -212,34 +262,10 @@ export class AdminUsersComponent implements OnInit {
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
     window.URL.revokeObjectURL(url);
-  }
-
-  // Error and success handling
-  private handleError(error: any, defaultMessage: string) {
-    if (error.status === 401) {
-      this.authService.logout();
-      return;
-    }
-
-    const message = error.error?.message || defaultMessage;
-    this.errorMessage.set(message);
-    setTimeout(() => this.errorMessage.set(''), 5000);
-  }
-
-  private showSuccess(message: string) {
-    this.successMessage.set(message);
-    this.errorMessage.set('');
-    setTimeout(() => this.successMessage.set(''), 3000);
-  }
-
-  private showError(message: string) {
-    this.errorMessage.set(message);
-    this.successMessage.set('');
-    setTimeout(() => this.errorMessage.set(''), 5000);
   }
 }

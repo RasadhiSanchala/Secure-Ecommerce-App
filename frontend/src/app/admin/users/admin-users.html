@@ -59,8 +59,8 @@
       <div class="stat-card">
         <div class="stat-icon">🔐</div>
         <div class="stat-content">
-          <h3>{{ auth0Users() }}</h3>
-          <p>Auth0 Users</p>
+          <h3>{{ oauthUsers() }}</h3>
+          <p>OAuth Users</p>
         </div>
       </div>
     </div>
@@ -87,12 +87,17 @@
             <option value="user">Regular Users</option>
             <option value="verified">Verified Email</option>
             <option value="unverified">Unverified Email</option>
+            <option value="oauth">OAuth Users</option>
+            <option value="local">Local Users</option>
           </select>
         </div>
       </div>
 
       <div class="results-info">
         <span>{{ filteredUsers().length }} users found</span>
+        @if (pagination().totalUsers) {
+          <span class="pagination-info">({{ pagination().totalUsers }} total)</span>
+        }
       </div>
     </div>
 
@@ -130,21 +135,21 @@
             </td>
 
             <td class="role-cell">
-                <span class="role-badge" [class.admin]="user.isAdmin">
-                  {{ user.isAdmin ? 'Admin' : 'User' }}
-                </span>
+              <span class="role-badge" [class.admin]="user.isAdmin">
+                {{ user.isAdmin ? 'Admin' : 'User' }}
+              </span>
             </td>
 
             <td class="email-status">
-                <span class="status-badge" [class.verified]="user.emailVerified">
-                  {{ user.emailVerified ? '✅ Verified' : '❌ Unverified' }}
-                </span>
+              <span class="status-badge" [class.verified]="user.emailVerified">
+                {{ user.emailVerified ? '✅ Verified' : '❌ Unverified' }}
+              </span>
             </td>
 
             <td class="auth-type">
-                <span class="auth-badge" [class.auth0]="user.auth0Id">
-                  {{ user.auth0Id ? '🔐 Auth0' : '🔑 Local' }}
-                </span>
+              <span class="auth-badge" [ngClass]="getOauthProviderClass(user)">
+                {{ getOauthProviderDisplay(user) }}
+              </span>
             </td>
 
             <td class="date-cell">
@@ -152,9 +157,9 @@
             </td>
 
             <td class="date-cell">
-                <span *ngIf="user.lastLogin; else noLogin">
-                  {{ formatDate(user.lastLogin) }}
-                </span>
+              <span *ngIf="user.lastLogin; else noLogin">
+                {{ formatDate(user.lastLogin) }}
+              </span>
               <ng-template #noLogin>
                 <span class="no-login">Never</span>
               </ng-template>
@@ -193,30 +198,10 @@
       </div>
 
       <!-- Empty State -->
-      <div class="empty-state" *ngIf="filteredUsers().length === 0">
+      <div class="empty-state" *ngIf="filteredUsers().length === 0 && !isLoading()">
         <h3>No users found</h3>
-        <p *ngIf="searchTerm() || selectedRole()">
-          Try adjusting your search or filter settings.
-        </p>
-        <p *ngIf="!searchTerm() && !selectedRole()">
-          No users in the system yet.
-        </p>
-
-        <button class="btn btn-secondary" (click)="searchTerm.set(''); selectedRole.set(''); filterUsers()" *ngIf="searchTerm() || selectedRole()">
-          Clear Filters
-        </button>
+        <p>Try adjusting your search or filter criteria.</p>
       </div>
-    </div>
-
-    <!-- Warning Note -->
-    <div class="warning-note">
-      <h4>⚠️ Important Notes:</h4>
-      <ul>
-        <li>You cannot modify or delete your own admin account</li>
-        <li>Deleting a user will permanently remove all their data including orders</li>
-        <li>Email verification status can be manually toggled for troubleshooting</li>
-        <li>Auth0 users have their passwords managed externally</li>
-      </ul>
     </div>
   </div>
 </div>
