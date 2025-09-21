@@ -1,4 +1,4 @@
-<!-- frontend/src/app/products/products.html - Updated with cart functionality -->
+<!-- frontend/src/app/products/products.html -->
 <div class="products-container">
   <div class="container">
     <header class="page-header">
@@ -11,7 +11,7 @@
           <span class="cart-count">{{ cartService.itemCount() }} items in cart</span>
           <span class="cart-total">{{ '$' + cartService.total().toFixed(2) }}</span>
         </div>
-        <a routerLink="/cart" class="btn btn-outline btn-sm">
+        <a [routerLink]="['/cart']" class="btn btn-outline btn-sm">
           🛒 View Cart
         </a>
       </div>
@@ -40,10 +40,13 @@
 
     <div class="products-grid" *ngIf="!productService.isLoading(); else loadingTemplate">
       <div class="product-card" *ngFor="let product of filteredProducts()">
+        <!-- Product Image - Clickable -->
         <div class="product-image">
-          <img [src]="product.imageUrl || '/assets/images/default-product.jpg'"
-               [alt]="product.name"
-               (error)="onImageError($event)">
+          <a [routerLink]="['/products', product._id]" class="product-image-link">
+            <img [src]="product.imageUrl || '/assets/images/default-product.jpg'"
+                 [alt]="product.name"
+                 (error)="onImageError($event)">
+          </a>
           <div class="product-category">{{product.category}}</div>
 
           <!-- Stock indicator -->
@@ -53,7 +56,12 @@
         </div>
 
         <div class="product-info">
-          <h3>{{product.name}}</h3>
+          <!-- Product Name - Clickable -->
+          <h3>
+            <a [routerLink]="['/products', product._id]" class="product-title-link">
+              {{product.name}}
+            </a>
+          </h3>
           <p class="product-description">{{product.description}}</p>
 
           <!-- Cart Status -->
@@ -82,10 +90,10 @@
                 <span *ngIf="product.available && product.stock && product.stock <= 0">Out of Stock</span>
               </button>
 
-              <!-- Quick View Button (Future Enhancement) -->
-              <!-- <button class="quick-view-btn" title="Quick View">
-                👁️
-              </button> -->
+              <!-- View Details Button -->
+              <a [routerLink]="['/products', product._id]" class="view-details-btn" title="View Details">
+                👁️ Details
+              </a>
             </div>
           </div>
         </div>

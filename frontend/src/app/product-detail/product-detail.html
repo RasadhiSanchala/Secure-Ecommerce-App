@@ -1,0 +1,201 @@
+<!-- frontend/src/app/product-detail/product-detail.html - Fixed version -->
+<div class="product-detail-container">
+  <!-- Loading State -->
+  <div class="loading" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <p>Loading product details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-message" *ngIf="error()">
+    <h2>{{ error() }}</h2>
+    <p>The product you're looking for might have been moved or doesn't exist.</p>
+    <button class="btn btn-primary" (click)="goBack()">
+      ← Back to Products
+    </button>
+  </div>
+
+  <!-- Product Content -->
+  <div class="product-content" *ngIf="!isLoading() && !error() && product()">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a routerLink="/home">Home</a>
+      <span class="separator">></span>
+      <a routerLink="/products">Products</a>
+      <span class="separator">></span>
+      <span class="current">{{ product()?.name || 'Product' }}</span>
+    </nav>
+
+    <!-- Main Product Section -->
+    <div class="product-main">
+      <!-- Product Image -->
+      <div class="product-image-section">
+        <div class="main-image">
+          <img 
+            [src]="product()?.imageUrl || '/assets/images/default-product.jpg'"
+            [alt]="product()?.name || 'Product'"
+            (error)="onImageError($event)"
+          >
+          <div class="product-category-badge">{{ product()?.category || 'Product' }}</div>
+        </div>
+      </div>
+
+      <!-- Product Info -->
+      <div class="product-info-section">
+        <div class="product-header">
+          <h1>{{ product()?.name || 'Product' }}</h1>
+          <div class="product-price">${{ (product()?.price || 0).toFixed(2) }}</div>
+        </div>
+
+        <div class="product-description">
+          <p>{{ product()?.description || 'No description available' }}</p>
+        </div>
+
+        <!-- Stock Status -->
+        <div class="stock-info">
+          <span 
+            class="stock-status" 
+            [class.available]="product()?.available && (!product()?.stock || (product()?.stock || 0) > 0)"
+            [class.low-stock]="product()?.available && product()?.stock && (product()?.stock || 0) <= 10"
+            [class.out-of-stock]="!product()?.available || (product()?.stock && (product()?.stock || 0) <= 0)"
+          >
+            <ng-container *ngIf="product()?.available && (!product()?.stock || (product()?.stock || 0) > 0)">
+              ✓ In Stock
+              <span *ngIf="product()?.stock && (product()?.stock || 0) <= 10" class="stock-warning">
+                (Only {{ product()?.stock || 0 }} left!)
+              </span>
+            </ng-container>
+            <ng-container *ngIf="!product()?.available || (product()?.stock && (product()?.stock || 0) <= 0)">
+              ✗ Out of Stock
+            </ng-container>
+          </span>
+        </div>
+
+        <!-- Cart Status (if already in cart) -->
+        <div class="cart-status" *ngIf="isInCart()">
+          <div class="in-cart-indicator">
+            ✓ {{ getCartQuantity() }} in cart
+          </div>
+        </div>
+
+        <!-- Quantity Selector & Add to Cart -->
+        <div class="cart-section" *ngIf="product()?.available">
+          <div class="quantity-selector">
+            <label for="quantity">Quantity:</label>
+            <div class="quantity-controls">
+              <button 
+                type="button" 
+                class="quantity-btn" 
+                (click)="decreaseQuantity()"
+                [disabled]="quantity() <= 1"
+              >
+                -
+              </button>
+              <input 
+                id="quantity"
+                type="number" 
+                [value]="quantity()" 
+                (input)="setQuantity(+$any($event.target).value)"
+                [min]="1" 
+                [max]="maxQuantity()"
+                class="quantity-input"
+              >
+              <button 
+                type="button" 
+                class="quantity-btn" 
+                (click)="increaseQuantity()"
+                [disabled]="quantity() >= maxQuantity()"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div class="total-price">
+            <span class="total-label">Total: </span>
+            <span class="total-amount">${{ totalPrice().toFixed(2) }}</span>
+          </div>
+
+          <div class="action-buttons">
+            <button 
+              class="btn btn-primary add-to-cart-btn" 
+              (click)="addToCart()"
+              [disabled]="!canAddToCart()"
+            >
+              <span *ngIf="!isInCart()">🛒 Add to Cart</span>
+              <span *ngIf="isInCart()">🛒 Add More</span>
+            </button>
+
+            <button class="btn btn-secondary" (click)="goToCart()" *ngIf="!cartService.isEmpty()">
+              View Cart ({{ cartService.itemCount() }})
+            </button>
+          </div>
+        </div>
+
+        <!-- Unavailable Product Message -->
+        <div class="unavailable-message" *ngIf="!product()?.available">
+          <p>This product is currently unavailable.</p>
+          <button class="btn btn-secondary" (click)="goBack()">
+            ← Browse Other Products
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Details Tabs -->
+    <div class="product-details-tabs">
+      <div class="tab-content">
+        <div class="tab-panel">
+          <h3>Product Information</h3>
+          <div class="product-specs">
+            <div class="spec-item">
+              <span class="spec-label">Category:</span>
+              <span class="spec-value">{{ product()?.category || 'N/A' }}</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Availability:</span>
+              <span class="spec-value">{{ product()?.available ? 'Available' : 'Out of Stock' }}</span>
+            </div>
+            <div class="spec-item" *ngIf="product()?.stock">
+              <span class="spec-label">Stock:</span>
+              <span class="spec-value">{{ product()?.stock || 0 }} units</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Price:</span>
+              <span class="spec-value">${{ (product()?.price || 0).toFixed(2) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related Products -->
+    <!--
+    <div class="related-products" *ngIf="relatedProducts().length > 0">
+      <h3>Related Products</h3>
+      <div class="related-grid">
+        <div class="related-product" *ngFor="let relatedProduct of relatedProducts()">
+          <a [routerLink]="['/products', relatedProduct._id]" class="related-link">
+            <img 
+              [src]="relatedProduct.imageUrl || '/assets/images/default-product.jpg'"
+              [alt]="relatedProduct.name || 'Product'"
+              (error)="onImageError($event)"
+            >
+            <div class="related-info">
+              <h4>{{ relatedProduct.name || 'Product' }}</h4>
+              <span class="related-price">${{ (relatedProduct.price || 0).toFixed(2) }}</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+    -->
+
+    <!-- Back Button -->
+    <div class="navigation-footer">
+      <button class="btn btn-outline" (click)="goBack()">
+        ← Back to Products
+      </button>
+    </div>
+  </div>
+</div>

@@ -9,12 +9,14 @@ import { ProfileComponent } from './profile/profile';
 import { OrdersComponent } from './orders/orders';
 import { AuthSuccessComponent } from './auth/success/auth-success';
 import { AuthFailureComponent } from './auth/failure/auth-failure';
+import { ProductDetailComponent } from './product-detail/product-detail';
 
 export const routes: Routes = [
   // Main routes
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'home', component: Home, title: 'BakeHouse' },
   { path: 'products', component: ProductsComponent, title: 'Products' },
+  { path: 'products/:id', component: ProductDetailComponent, title: 'Product Details' },
   { path: 'about', component: AboutComponent, title: 'About Us' },
 
   // Auth routes

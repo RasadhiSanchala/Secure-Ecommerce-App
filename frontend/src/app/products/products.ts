@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService, Product } from '../services/product.service';
 import { CartService } from '../services/cart.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './products.html',
   styleUrl: './products.css'
 })
@@ -20,7 +21,7 @@ export class ProductsComponent implements OnInit {
   constructor(
     public productService: ProductService,
     public cartService: CartService
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.loadProducts();

@@ -1,7 +1,7 @@
 // src/app/services/product.service.ts
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, of, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 
@@ -53,7 +53,7 @@ export class ProductService {
   constructor(
     private http: HttpClient,
     private authService: AuthService
-  ) {}
+  ) { }
 
   getAllProducts(): Observable<ProductResponse> {
     this._isLoading.set(true);
@@ -69,11 +69,33 @@ export class ProductService {
     );
   }
 
+  // Get single product by ID
   getProduct(id: string): Observable<Product> {
-    return this.http.get<Product>(`${environment.apiUrl}/products/${id}`, {
-      headers: this.authService.getAuthHeaders()
-    });
+    this._isLoading.set(true);
+
+    return this.http.get<Product>(`${environment.apiUrl}/products/${id}`).pipe(
+      map(product => {
+        this._isLoading.set(false);
+        return product;
+      }),
+      catchError((error) => {
+        console.error('Error fetching product from API:', error);
+        this._isLoading.set(false);
+
+        // Fallback to local products if available
+        const existingProducts = this._products();
+        const localProduct = existingProducts.find(p => p._id === id);
+
+        if (localProduct) {
+          return of(localProduct);
+        }
+
+        // If not found locally, throw error
+        throw new Error('Product not found');
+      })
+    );
   }
+
 
   createProduct(productData: CreateProductRequest): Observable<Product> {
     return this.http.post<Product>(`${environment.apiUrl}/products`, productData, {
