@@ -8,8 +8,12 @@
       <!-- Cart Summary -->
       <div class="cart-summary-header" *ngIf="!cartService.isEmpty()">
         <div class="cart-info">
-          <span class="cart-count">{{ cartService.itemCount() }} items in cart</span>
-          <span class="cart-total">{{ '$' + cartService.total().toFixed(2) }}</span>
+          <span class="cart-count"
+            >{{ cartService.itemCount() }} items in cart</span
+          >
+          <span class="cart-total">{{
+            "$" + cartService.total().toFixed(2)
+          }}</span>
         </div>
         <a [routerLink]="['/cart']" class="btn btn-outline btn-sm">
           🛒 View Cart
@@ -20,9 +24,18 @@
     <div class="filters">
       <div class="filter-group">
         <label for="category">Category:</label>
-        <select id="category" [(ngModel)]="selectedCategory" (change)="filterProducts()">
+        <select
+          id="category"
+          [(ngModel)]="selectedCategory"
+          (change)="filterProducts()"
+        >
           <option value="">All Categories</option>
-          <option *ngFor="let category of productService.categories()" [value]="category">{{category}}</option>
+          <option
+            *ngFor="let category of productService.categories()"
+            [value]="category"
+          >
+            {{ category }}
+          </option>
         </select>
       </div>
 
@@ -38,41 +51,59 @@
       </div>
     </div>
 
-    <div class="products-grid" *ngIf="!productService.isLoading(); else loadingTemplate">
+    <div
+      class="products-grid"
+      *ngIf="!productService.isLoading(); else loadingTemplate"
+    >
       <div class="product-card" *ngFor="let product of filteredProducts()">
         <!-- Product Image - Clickable -->
         <div class="product-image">
-          <a [routerLink]="['/products', product._id]" class="product-image-link">
-            <img [src]="product.imageUrl || '/assets/images/default-product.jpg'"
-                 [alt]="product.name"
-                 (error)="onImageError($event)">
+          <a
+            [routerLink]="['/products', product._id]"
+            class="product-image-link"
+          >
+            <img
+              [src]="product.imageUrl || '/assets/images/default-product.jpg'"
+              [alt]="product.name"
+              (error)="onImageError($event)"
+            />
           </a>
-          <div class="product-category">{{product.category}}</div>
+          <div class="product-category">{{ product.category }}</div>
 
           <!-- Stock indicator -->
-          <div class="stock-indicator" *ngIf="product.stock < 10 && product.available">
+          <div
+            class="stock-indicator"
+            *ngIf="product.stock < 10 && product.available"
+          >
             Only {{ product.stock }} left!
           </div>
         </div>
 
         <div class="product-info">
-          <!-- Product Name - Clickable -->
-          <h3>
-            <a [routerLink]="['/products', product._id]" class="product-title-link">
-              {{product.name}}
-            </a>
-          </h3>
-          <p class="product-description">{{product.description}}</p>
+          <!-- Content area that grows to fill space -->
+          <div class="product-content-area">
+            <!-- Product Name - Clickable -->
+            <h3>
+              <a
+                [routerLink]="['/products', product._id]"
+                class="product-title-link"
+              >
+                {{ product.name }}
+              </a>
+            </h3>
+            <p class="product-description">{{ product.description }}</p>
+          </div>
 
-          <!-- Cart Status -->
+          <!-- Cart Status - positioned above footer -->
           <div class="cart-status" *ngIf="isInCart(product._id)">
             <span class="in-cart-indicator">
               ✓ {{ getCartQuantity(product._id) }} in cart
             </span>
           </div>
 
+          <!-- Footer - always at bottom -->
           <div class="product-footer">
-            <span class="product-price">${{product.price.toFixed(2)}}</span>
+            <span class="product-price">${{ product.price.toFixed(2) }}</span>
 
             <div class="product-actions">
               <!-- Add to Cart Button -->
@@ -80,18 +111,33 @@
                 class="add-to-cart-btn"
                 [class.unavailable]="!product.available"
                 [class.in-cart]="isInCart(product._id)"
-                [disabled]="!product.available || (product.stock && product.stock <= 0)"
+                [disabled]="
+                  !product.available || (product.stock && product.stock <= 0)
+                "
                 (click)="addToCart(product)"
               >
-                <span *ngIf="product.available && (!product.stock || product.stock > 0)">
-                  {{ isInCart(product._id) ? 'Add More' : 'Add to Cart' }}
+                <span
+                  *ngIf="
+                    product.available && (!product.stock || product.stock > 0)
+                  "
+                >
+                  {{ isInCart(product._id) ? "Add More" : "Add to Cart" }}
                 </span>
                 <span *ngIf="!product.available">Unavailable</span>
-                <span *ngIf="product.available && product.stock && product.stock <= 0">Out of Stock</span>
+                <span
+                  *ngIf="
+                    product.available && product.stock && product.stock <= 0
+                  "
+                  >Out of Stock</span
+                >
               </button>
 
               <!-- View Details Button -->
-              <a [routerLink]="['/products', product._id]" class="view-details-btn" title="View Details">
+              <a
+                [routerLink]="['/products', product._id]"
+                class="view-details-btn"
+                title="View Details"
+              >
                 👁️ Details
               </a>
             </div>
@@ -107,7 +153,10 @@
       </div>
     </ng-template>
 
-    <div class="no-products" *ngIf="!productService.isLoading() && filteredProducts().length === 0">
+    <div
+      class="no-products"
+      *ngIf="!productService.isLoading() && filteredProducts().length === 0"
+    >
       <h3>No products found</h3>
       <p *ngIf="searchTerm() || selectedCategory()">
         Try adjusting your filters or search terms.
@@ -116,7 +165,11 @@
         We're currently updating our product catalog. Please check back soon!
       </p>
 
-      <button class="btn btn-secondary" (click)="searchTerm.set(''); selectedCategory.set(''); filterProducts()" *ngIf="searchTerm() || selectedCategory()">
+      <button
+        class="btn btn-secondary"
+        (click)="searchTerm.set(''); selectedCategory.set(''); filterProducts()"
+        *ngIf="searchTerm() || selectedCategory()"
+      >
         Clear Filters
       </button>
     </div>

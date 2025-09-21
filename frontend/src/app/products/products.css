@@ -111,6 +111,9 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Ensure all cards take full height of grid cell */
 }
 
 .product-card:hover {
@@ -169,6 +172,16 @@
 /* Product Info */
 .product-info {
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Allow this section to grow and fill available space */
+}
+
+/* Product title and description area */
+.product-content-area {
+  flex-grow: 1; /* This will push the footer to the bottom */
+  display: flex;
+  flex-direction: column;
 }
 
 .product-info h3 {
