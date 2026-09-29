@@ -8,7 +8,9 @@ const User = require('../models/user');
 passport.use('google', new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: '/auth/google/callback'
+  callbackURL:
+  process.env.GOOGLE_CALLBACK_URL ||
+  'http://localhost:3005/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -59,7 +61,9 @@ passport.use('auth0', new Auth0Strategy({
   domain: process.env.AUTH0_DOMAIN,
   clientID: process.env.AUTH0_CLIENT_ID,
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
-  callbackURL: '/auth/auth0/callback'
+  callbackURL:
+  process.env.AUTH0_CALLBACK_URL ||
+  'http://localhost:3005/auth/auth0/callback'
 }, async (accessToken, refreshToken, extraParams, profile, done) => {
   try {
     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
