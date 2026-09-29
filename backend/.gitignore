@@ -11,5 +11,3 @@ coverage/
 *.launch
 .settings/
 *.sublime-workspace
-
-package-lock.json
