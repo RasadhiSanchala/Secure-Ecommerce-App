@@ -1,5 +1,5 @@
 .DS_Store
 Thumbs.db
- .env
+.env
 backend/.env
 frontend/.env
